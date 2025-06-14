@@ -1,25 +1,37 @@
-import { createRouter, createRoute, createRootRoute, Outlet } from '@tanstack/react-router'
-import GameComponent from './components/GameComponent'
+import {
+  createRouter,
+  createRoute,
+  createRootRoute,
+  Outlet,
+} from "@tanstack/react-router";
+import GameComponent from "./components/GameComponent";
+import ThemeDemo from "./components/ThemeDemo";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
-})
+});
 
 const gameRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/',
+  path: "/",
   component: GameComponent,
-})
+});
 
-const routeTree = rootRoute.addChildren([gameRoute])
+const themeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/theme",
+  component: ThemeDemo,
+});
+
+const routeTree = rootRoute.addChildren([gameRoute, themeRoute]);
 
 export const router = createRouter({
   routeTree,
-  basepath: '/eye-beat-you',
-})
+  basepath: "/eye-beat-you",
+});
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
-    router: typeof router
+    router: typeof router;
   }
-} 
+}

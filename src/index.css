@@ -8,37 +8,45 @@
   --font-display: "Caprasimo", serif;
   --font-body: "Nunito", sans-serif;
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
+
+  /* Custom Orange Brand Colors */
+  --orange-400: #fb923c;
+  --orange-800: #9a3412;
+  --cream-light: #f4efd2;
+  --dark-grey: #343434;
+
+  /* Updated ShadCN Color Palette */
+  --background: var(--orange-400);
+  --foreground: var(--dark-grey);
+  --card: var(--cream-light);
+  --card-foreground: var(--dark-grey);
+  --popover: var(--cream-light);
+  --popover-foreground: var(--dark-grey);
+  --primary: var(--orange-800);
+  --primary-foreground: var(--cream-light);
+  --secondary: var(--cream-light);
+  --secondary-foreground: var(--orange-800);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: var(--orange-800);
+  --accent-foreground: var(--cream-light);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
+  --border: var(--orange-800);
+  --input: var(--cream-light);
+  --ring: var(--orange-800);
+  --chart-1: var(--orange-400);
+  --chart-2: var(--orange-800);
+  --chart-3: var(--cream-light);
+  --chart-4: var(--dark-grey);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: var(--cream-light);
+  --sidebar-foreground: var(--dark-grey);
+  --sidebar-primary: var(--orange-800);
+  --sidebar-primary-foreground: var(--cream-light);
+  --sidebar-accent: var(--orange-400);
+  --sidebar-accent-foreground: var(--dark-grey);
+  --sidebar-border: var(--orange-800);
+  --sidebar-ring: var(--orange-800);
 }
 
 @theme inline {
@@ -77,47 +85,175 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Custom Brand Colors for Tailwind */
+  --color-brand-orange: var(--orange-400);
+  --color-brand-orange-dark: var(--orange-800);
+  --color-brand-cream: var(--cream-light);
+  --color-brand-dark: var(--dark-grey);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
+  --background: var(--dark-grey);
+  --foreground: var(--cream-light);
+  --card: var(--dark-grey);
+  --card-foreground: var(--cream-light);
+  --popover: var(--dark-grey);
+  --popover-foreground: var(--cream-light);
+  --primary: var(--orange-400);
+  --primary-foreground: var(--dark-grey);
+  --secondary: var(--orange-800);
+  --secondary-foreground: var(--cream-light);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --accent: var(--orange-400);
+  --accent-foreground: var(--dark-grey);
+  --border: var(--orange-800);
+  --input: var(--dark-grey);
+  --ring: var(--orange-400);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    background-image: url("/bg_texture.jpg");
+    background-size: cover;
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: repeat;
+    background-blend-mode: multiply;
+  }
+
+  /* Typography */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.03em;
+  }
+
+  /* Texture overlay for cards, modals, popovers */
+  .texture-bg {
+    background-color: inherit;
+    position: relative;
+  }
+
+  .texture-bg::before {
+    background-color: inherit;
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("/bg_texture.jpg");
+    background-repeat: repeat;
+    background-size: cover;
+    background-position: center;
+    background-blend-mode: multiply;
+    opacity: 0.9;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .texture-bg > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+@layer components {
+  /* Pill button base styles */
+  .btn-pill {
+    @apply rounded-full px-6 py-3 font-medium transition-all duration-300;
+  }
+
+  /* Improved bounce animation */
+  .btn-bounce:hover {
+    animation: gentle-bounce 0.6s ease-in-out;
+  }
+
+  .btn-pulse:hover {
+    @apply animate-pulse scale-110;
+  }
+
+  /* Gradient overlays for enhanced texture */
+  .gradient-overlay {
+    background: linear-gradient(
+      135deg,
+      var(--orange-400) 0%,
+      var(--orange-800) 100%
+    );
+    opacity: 0.1;
+  }
+}
+
+@layer utilities {
+  /* Custom brand color utilities */
+  .bg-brand-orange {
+    background-color: var(--orange-400);
+  }
+  .bg-brand-orange-dark {
+    background-color: var(--orange-800);
+  }
+  .bg-brand-cream {
+    background-color: var(--cream-light);
+  }
+  .bg-brand-dark {
+    background-color: var(--dark-grey);
+  }
+
+  .text-brand-orange {
+    color: var(--orange-400);
+  }
+  .text-brand-orange-dark {
+    color: var(--orange-800);
+  }
+  .text-brand-cream {
+    color: var(--cream-light);
+  }
+  .text-brand-dark {
+    color: var(--dark-grey);
+  }
+
+  .border-brand-orange {
+    border-color: var(--orange-400);
+  }
+  .border-brand-orange-dark {
+    border-color: var(--orange-800);
+  }
+  .border-brand-cream {
+    border-color: var(--cream-light);
+  }
+  .border-brand-dark {
+    border-color: var(--dark-grey);
+  }
+}
+
+/* Improved gentle bounce animation keyframes */
+@keyframes gentle-bounce {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  25% {
+    transform: translateY(-4px) scale(1.02);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.02);
+  }
+  75% {
+    transform: translateY(-1px) scale(1.01);
+  }
+  100% {
+    transform: translateY(0) scale(1);
   }
 }
