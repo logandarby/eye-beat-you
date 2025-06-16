@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useFaceLandmarker } from "../hooks/useFaceLandmarker";
+import { useFacialLandmarkDetection } from "../hooks/useFacialLandmarkDetection";
+import type { FaceLandmarkerResult } from "@mediapipe/tasks-vision";
 
 const CANVAS_PADDING_PX = 80;
 
@@ -8,15 +11,69 @@ type LegacyHTMLVideoElement =
 
 function GameComponent() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraStatus, setCameraStatus] = useState<
     "loading" | "success" | "error"
   >("loading");
+  const detectionEnabled = true;
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  // Initialize MediaPipe FaceLandmarker
+  const {
+    faceLandmarker,
+    isLoaded: isModelLoaded,
+    error: modelError,
+  } = useFaceLandmarker();
+
+  let b = true;
+
+  // Mock callback to log detection results
+  const handleResults = useCallback(
+    (results: FaceLandmarkerResult) => {
+      if (!b) return;
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        const landmarks = results.faceLandmarks[0];
+        console.log("Face detection results:", {
+          facesDetected: results.faceLandmarks.length,
+          landmarkCount: landmarks.length,
+          firstLandmark: landmarks[0],
+          blendShapes: results.faceBlendshapes
+            ? results.faceBlendshapes.length
+            : 0,
+        });
+        b = false;
+      }
+    },
+    [b],
+  );
+
+  // Initialize facial landmark detection
+  useFacialLandmarkDetection({
+    videoElement: videoRef.current,
+    canvasElement: canvasRef.current,
+    faceLandmarker,
+    isModelLoaded,
+    isEnabled: detectionEnabled && cameraStatus === "success",
+    isDrawing,
+    onResults: handleResults,
+  });
 
   useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "d") {
+        setIsDrawing(!isDrawing);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isDrawing]);
+
+  // Get webcam access
+  useEffect(() => {
     const videoElement = videoRef.current;
-
     if (!videoElement) return;
-
     const setupWebcam = async () => {
       try {
         // Request access to webcam
@@ -53,9 +110,7 @@ function GameComponent() {
         setCameraStatus("error");
       }
     };
-
     setupWebcam();
-
     // Cleanup function using captured video element
     return () => {
       const video = videoElement as unknown as LegacyHTMLVideoElement;
@@ -68,7 +123,45 @@ function GameComponent() {
         URL.revokeObjectURL(video.src);
       }
     };
-  }, []); // videoRef.current changes don't trigger re-renders, so we don't need it as dependency
+  }, []);
+
+  // Resize canvas to match video dimensions
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    const canvasElement = canvasRef.current;
+
+    if (!videoElement || !canvasElement) return;
+
+    const resizeCanvas = () => {
+      // Use video's actual video dimensions, not the display size
+      if (videoElement.videoWidth && videoElement.videoHeight) {
+        const videoRect = videoElement.getBoundingClientRect();
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+        canvasElement.style.width = `${videoRect.width}px`;
+        canvasElement.style.height = `${videoRect.height}px`;
+        console.log(
+          `Canvas resized to: ${canvasElement.width}x${canvasElement.height} (display: ${videoRect.width}x${videoRect.height})`,
+        );
+      }
+    };
+
+    // Resize canvas when video loads or window resizes
+    videoElement.addEventListener("loadedmetadata", resizeCanvas);
+    videoElement.addEventListener("canplay", resizeCanvas);
+    window.addEventListener("resize", resizeCanvas);
+
+    // Initial resize if video is already loaded
+    if (videoElement.videoWidth && videoElement.videoHeight) {
+      resizeCanvas();
+    }
+
+    return () => {
+      videoElement.removeEventListener("loadedmetadata", resizeCanvas);
+      videoElement.removeEventListener("canplay", resizeCanvas);
+      window.removeEventListener("resize", resizeCanvas);
+    };
+  }, [cameraStatus]);
 
   const CameraFallback = () => (
     <div
@@ -88,6 +181,11 @@ function GameComponent() {
           ? "Please wait while we access your camera."
           : "Please give your browser permission to use your camera and refresh the page so we can get this party started!"}
       </p>
+      {modelError && (
+        <p className="font-body text-red-400 text-sm mt-4 max-w-md">
+          MediaPipe Error: {modelError}
+        </p>
+      )}
     </div>
   );
 
@@ -96,7 +194,6 @@ function GameComponent() {
       className="bg-background min-h-screen texture-bg"
       style={{ padding: `${CANVAS_PADDING_PX}px` }}
     >
-      {/* Always render video element but control visibility */}
       <div
         className={`relative rounded-4xl border-4 border-brand-orange-dark shadow-2xl drop-shadow-2xl overflow-hidden ${
           cameraStatus === "success" ? "block" : "hidden"
@@ -116,12 +213,24 @@ function GameComponent() {
             transform: "scaleX(-1)",
           }}
         />
+
+        {/* Facial landmarks canvas overlay */}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          style={{
+            transform: "scaleX(-1)",
+            zIndex: 10,
+          }}
+        />
+
         {/* Vignette overlay */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
               "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0.6) 100%)",
+            zIndex: 5,
           }}
         />
       </div>
