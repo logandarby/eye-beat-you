@@ -449,6 +449,13 @@ function GameComponent() {
             }}
           />
 
+          {/* Muted text overlay */}
+          {isMuted && (
+            <div className="muted-overlay">
+              <span>Muted</span>
+            </div>
+          )}
+
           {/* Vignette overlay */}
           <div
             className="absolute inset-0 pointer-events-none"
