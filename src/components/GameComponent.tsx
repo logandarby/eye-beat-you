@@ -10,7 +10,8 @@ import {
   MOUTH_OPEN_AUDIO_FILE,
 } from "@/lib/constants";
 
-const CANVAS_PADDING_PX = 80;
+const CANVAS_PADDING_X = 80 * 2;
+const CANVAS_PADDING_Y = 80;
 
 type LegacyHTMLVideoElement =
   | Omit<HTMLVideoElement, "srcObject">
@@ -169,12 +170,19 @@ function GameComponent() {
 
     const resizeCanvas = () => {
       // Use video's actual video dimensions, not the display size
+      // TODO: Fix this
       if (videoElement.videoWidth && videoElement.videoHeight) {
         const videoRect = videoElement.getBoundingClientRect();
-        canvasElement.width = videoElement.videoWidth;
-        canvasElement.height = videoElement.videoHeight;
-        canvasElement.style.width = `${videoRect.width}px`;
-        canvasElement.style.height = `${videoRect.height}px`;
+        canvasElement.width = videoRect.width;
+        canvasElement.height = videoRect.height;
+        videoElement.width = videoRect.width;
+        videoElement.height = videoRect.height;
+
+        // canvasElement.style.width = `${videoRect.width}px`;
+        // canvasElement.style.height = `${videoRect.height}px`;
+        // videoElement.style.width = `${videoRect.width}px`;
+        // videoElement.style.height = `${videoRect.height}px`;
+
         console.log(
           `Canvas resized to: ${canvasElement.width}x${canvasElement.height} (display: ${videoRect.width}x${videoRect.height})`,
         );
@@ -205,8 +213,8 @@ function GameComponent() {
     <div
       className="bg-brand-dark rounded-4xl border-4 border-brand-orange-dark shadow-2xl flex flex-col items-center justify-center text-center p-8"
       style={{
-        width: `calc(100vw - ${CANVAS_PADDING_PX * 2}px)`,
-        height: `calc(100vh - ${CANVAS_PADDING_PX * 2}px)`,
+        width: `calc(100vw - ${CANVAS_PADDING_X * 2}px)`,
+        height: `calc(100vh - ${CANVAS_PADDING_Y * 2}px)`,
       }}
     >
       <h1 className="font-display text-brand-cream text-4xl md:text-6xl mb-8">
@@ -230,7 +238,9 @@ function GameComponent() {
   return (
     <div
       className="bg-background min-h-screen texture-bg"
-      style={{ padding: `${CANVAS_PADDING_PX}px` }}
+      style={{
+        padding: `${CANVAS_PADDING_Y}px ${CANVAS_PADDING_X}px`,
+      }}
     >
       <div className="relative overflow-visible">
         {cameraStatus === "success" && (
@@ -329,8 +339,8 @@ function GameComponent() {
             cameraStatus === "success" ? "block" : "hidden"
           }`}
           style={{
-            width: `calc(100vw - ${CANVAS_PADDING_PX * 2}px)`,
-            height: `calc(100vh - ${CANVAS_PADDING_PX * 2}px)`,
+            width: `calc(100vw - ${CANVAS_PADDING_X * 2}px)`,
+            height: `calc(100vh - ${CANVAS_PADDING_Y * 2}px)`,
           }}
         >
           <video

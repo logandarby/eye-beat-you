@@ -5,7 +5,10 @@ import {
   MOUTH_ASPECT_RATIO_THRESHOLD,
   MOUTH_LANDMARKS,
   RIGHT_EYE_LANDMARKS,
+  EAR_VELOCITY_THRESHOLD,
+  EAR_VELOCITY_WINDOW_SIZE,
 } from "./constants";
+import { RollingAverage } from "./rollingAverage";
 
 interface OrificeState {
   isOpen: boolean;
@@ -31,12 +34,28 @@ export class FaceAnalyzer {
   private currentRightEAR: number = 0;
   private currentMouthMAR: number = 0;
 
+  // Previous EAR values for velocity calculation
+  private previousLeftEAR: number | null = null;
+  private previousRightEAR: number | null = null;
+
+  // Rolling averages for EAR velocity (finite differences)
+  private leftEARVelocity: RollingAverage;
+  private rightEARVelocity: RollingAverage;
+
   constructor(
     private readonly onEvent: (
       bodyPart: "leftEye" | "rightEye" | "mouth",
       event: "open" | "close",
     ) => void,
-  ) {}
+  ) {
+    // Initialize rolling averages for EAR velocity tracking
+    this.leftEARVelocity = new RollingAverage(
+      EAR_VELOCITY_WINDOW_SIZE,
+    );
+    this.rightEARVelocity = new RollingAverage(
+      EAR_VELOCITY_WINDOW_SIZE,
+    );
+  }
 
   /**
    * Calculate Eye Aspect Ratio (EAR) using the standard formula
@@ -140,7 +159,7 @@ export class FaceAnalyzer {
   }
 
   /**
-   * Update state and log transitions
+   * Update state and log transitions with velocity-based blink detection for eyes
    */
   private updateOrificeState(
     state: OrificeState,
@@ -149,10 +168,35 @@ export class FaceAnalyzer {
   ): void {
     state.previouslyOpen = state.isOpen;
     state.isOpen = isCurrentlyOpen;
-    if (state.previouslyOpen && !state.isOpen) {
-      this.onEvent(orificeName, "close");
-    } else if (!state.previouslyOpen && state.isOpen) {
-      this.onEvent(orificeName, "open");
+
+    // For eyes, use velocity-based detection
+    if (orificeName === "leftEye" || orificeName === "rightEye") {
+      const velocityAverage =
+        orificeName === "leftEye"
+          ? this.leftEARVelocity.getAverage()
+          : this.rightEARVelocity.getAverage();
+
+      // Only trigger blink events if velocity is above threshold
+      if (
+        state.previouslyOpen &&
+        !state.isOpen &&
+        Math.abs(velocityAverage) > EAR_VELOCITY_THRESHOLD
+      ) {
+        this.onEvent(orificeName, "close");
+      } else if (
+        !state.previouslyOpen &&
+        state.isOpen &&
+        Math.abs(velocityAverage) > EAR_VELOCITY_THRESHOLD
+      ) {
+        this.onEvent(orificeName, "open");
+      }
+    } else {
+      // For mouth, use traditional state-based detection
+      if (state.previouslyOpen && !state.isOpen) {
+        this.onEvent(orificeName, "close");
+      } else if (!state.previouslyOpen && state.isOpen) {
+        this.onEvent(orificeName, "open");
+      }
     }
   }
 
@@ -186,7 +230,20 @@ export class FaceAnalyzer {
     const mouthLandmarks = this.extractMouthLandmarks(landmarks);
     const mouthMAR = this.calculateMAR(mouthLandmarks);
 
-    // Store current values for external access
+    // Calculate EAR velocities (finite differences) and update rolling averages
+    if (this.previousLeftEAR !== null) {
+      const leftVelocity = leftEAR - this.previousLeftEAR;
+      this.leftEARVelocity.addValue(leftVelocity);
+    }
+
+    if (this.previousRightEAR !== null) {
+      const rightVelocity = rightEAR - this.previousRightEAR;
+      this.rightEARVelocity.addValue(rightVelocity);
+    }
+
+    // Store current values for external access and next iteration
+    this.previousLeftEAR = this.currentLeftEAR;
+    this.previousRightEAR = this.currentRightEAR;
     this.currentLeftEAR = leftEAR;
     this.currentRightEAR = rightEAR;
     this.currentMouthMAR = mouthMAR;
@@ -217,6 +274,12 @@ export class FaceAnalyzer {
     this.leftEyeState = { isOpen: true, previouslyOpen: true };
     this.rightEyeState = { isOpen: true, previouslyOpen: true };
     this.mouthState = { isOpen: false, previouslyOpen: false };
+
+    // Reset velocity tracking
+    this.previousLeftEAR = null;
+    this.previousRightEAR = null;
+    this.leftEARVelocity.reset();
+    this.rightEARVelocity.reset();
   }
 
   /**
@@ -238,6 +301,18 @@ export class FaceAnalyzer {
       leftEAR: this.currentLeftEAR,
       rightEAR: this.currentRightEAR,
       mouthMAR: this.currentMouthMAR,
+    };
+  }
+
+  /**
+   * Get current EAR velocity information
+   */
+  public getCurrentVelocities() {
+    return {
+      leftEARVelocity: this.leftEARVelocity.getAverage(),
+      rightEARVelocity: this.rightEARVelocity.getAverage(),
+      leftVelocityCount: this.leftEARVelocity.getCount(),
+      rightVelocityCount: this.rightEARVelocity.getCount(),
     };
   }
 }

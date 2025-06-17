@@ -6,6 +6,10 @@ export const MOUTH_OPEN_AUDIO_FILE = "/eye-beat-you/scream.mp3";
 export const EYE_ASPECT_RATIO_THRESHOLD = 0.18;
 export const MOUTH_ASPECT_RATIO_THRESHOLD = 0.5;
 
+// EAR velocity detection settings
+export const EAR_VELOCITY_THRESHOLD = 0.03; // Minimum velocity to trigger blink
+export const EAR_VELOCITY_WINDOW_SIZE = 3; // Rolling average window size for velocity calculation
+
 // MediaPipe face landmark indices
 // These are the specific 6 points used for EAR calculation from each eye
 export const LEFT_EYE_LANDMARKS = [
