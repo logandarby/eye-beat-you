@@ -1,17 +1,21 @@
+// Camera ready delay
+export const CAMERA_READY_DELAY = 300;
+export const FACE_DETECTION_DELAY = 1000;
+
 // Audio files to play
 export const BLINK_AUDIO_FILE = "/eye-beat-you/blink.mp3";
 export const MOUTH_OPEN_AUDIO_FILE = "/eye-beat-you/scream.mp3";
 
 // Thresholds for determining open/closed state
 export const EYE_ASPECT_RATIO_THRESHOLD = 0.15;
-export const MOUTH_ASPECT_RATIO_THRESHOLD = 0.5;
+export const MOUTH_ASPECT_RATIO_THRESHOLD = 0.4;
 
 // EAR velocity detection settings
 export const EAR_VELOCITY_THRESHOLD = 0.05; // Minimum velocity to trigger blink
 export const EAR_VELOCITY_WINDOW_SIZE = 1; // Rolling average window size for velocity calculation
 
 // MAR velocity detection settings
-export const MAR_VELOCITY_THRESHOLD = 0.15; // Minimum velocity to trigger mouth open/close
+export const MAR_VELOCITY_THRESHOLD = 0.05; // Minimum velocity to trigger mouth open/close
 export const MAR_VELOCITY_WINDOW_SIZE = 1; // Window size for MAR velocity calculation
 
 // Median filter settings for smoothing EAR/MAR values

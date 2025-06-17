@@ -7,6 +7,8 @@ import { FaceAnalyzer } from "../lib/faceAnalyzer";
 import type { FaceLandmarkerResult } from "@mediapipe/tasks-vision";
 import {
   BLINK_AUDIO_FILE,
+  CAMERA_READY_DELAY,
+  FACE_DETECTION_DELAY,
   MOUTH_OPEN_AUDIO_FILE,
 } from "@/lib/constants";
 import {
@@ -39,6 +41,11 @@ function GameComponent() {
   >("off");
   const [isMuted, setIsMuted] = useState(false);
   const isMutedRef = useRef(false);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const faceDetectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [cameraReadyDelayPassed, setCameraReadyDelayPassed] =
+    useState(false);
+  const cameraReadyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize MediaPipe FaceLandmarker
   const {
@@ -84,7 +91,27 @@ function GameComponent() {
   // Callback to analyze face landmarks for blinks and mouth movements
   const handleResults = useCallback(
     (results: FaceLandmarkerResult) => {
-      faceAnalyzerRef.current.analyzeFace(results);
+      const hasFaces =
+        results.faceLandmarks && results.faceLandmarks.length > 0;
+
+      if (hasFaces) {
+        setFaceDetected(true);
+        // Clear any existing timeout
+        if (faceDetectionTimeoutRef.current) {
+          clearTimeout(faceDetectionTimeoutRef.current);
+          faceDetectionTimeoutRef.current = null;
+        }
+        faceAnalyzerRef.current.analyzeFace(results);
+      } else {
+        // Set a timeout to mark face as not detected after a brief delay
+        // This prevents flickering when face detection temporarily fails
+        if (!faceDetectionTimeoutRef.current) {
+          faceDetectionTimeoutRef.current = setTimeout(() => {
+            setFaceDetected(false);
+            faceDetectionTimeoutRef.current = null;
+          }, FACE_DETECTION_DELAY);
+        }
+      }
     },
     [],
   );
@@ -121,53 +148,60 @@ function GameComponent() {
     };
   }, [debugMode]);
 
+  // Function to request webcam access
+  const requestCameraAccess = useCallback(async () => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    try {
+      // Request access to webcam
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false,
+      });
+      setCameraStatus("loading");
+
+      // Set video source with fallback for older browsers
+      const video = videoElement as LegacyHTMLVideoElement;
+
+      // Set up event listeners before setting source
+      const handleCanPlay = () => {
+        setCameraStatus("success");
+        videoElement.removeEventListener("canplay", handleCanPlay);
+      };
+
+      const handleError = () => {
+        console.error("Video playback error");
+        setCameraStatus("error");
+        videoElement.removeEventListener("error", handleError);
+      };
+
+      videoElement.addEventListener("canplay", handleCanPlay);
+      videoElement.addEventListener("error", handleError);
+
+      if ("srcObject" in video) {
+        video.srcObject = mediaStream;
+      } else {
+        video.src = URL.createObjectURL(
+          mediaStream as unknown as Blob,
+        );
+      }
+      console.log("Successfully set up webcam");
+    } catch (error) {
+      console.error("Error accessing webcam:", error);
+      setCameraStatus("error");
+    }
+  }, []);
+
   // Get webcam access
   useEffect(() => {
     const videoElement = videoRef.current;
-    if (!videoElement) return;
-    const setupWebcam = async () => {
-      try {
-        // Request access to webcam
-        const mediaStream = await navigator.mediaDevices.getUserMedia(
-          {
-            video: true,
-            audio: false,
-          },
-        );
-        // Set video source with fallback for older browsers
-        const video = videoElement as LegacyHTMLVideoElement;
+    requestCameraAccess();
 
-        // Set up event listeners before setting source
-        const handleCanPlay = () => {
-          setCameraStatus("success");
-          videoElement.removeEventListener("canplay", handleCanPlay);
-        };
-
-        const handleError = () => {
-          console.error("Video playback error");
-          setCameraStatus("error");
-          videoElement.removeEventListener("error", handleError);
-        };
-
-        videoElement.addEventListener("canplay", handleCanPlay);
-        videoElement.addEventListener("error", handleError);
-
-        if ("srcObject" in video) {
-          video.srcObject = mediaStream;
-        } else {
-          video.src = URL.createObjectURL(
-            mediaStream as unknown as Blob,
-          );
-        }
-        console.log("Successfully set up webcam");
-      } catch (error) {
-        console.error("Error accessing webcam:", error);
-        setCameraStatus("error");
-      }
-    };
-    setupWebcam();
     // Cleanup function using captured video element
     return () => {
+      if (!videoElement) return;
+
       const video = videoElement as unknown as LegacyHTMLVideoElement;
 
       if ("srcObject" in video && video.srcObject) {
@@ -178,7 +212,7 @@ function GameComponent() {
         URL.revokeObjectURL(video.src);
       }
     };
-  }, []);
+  }, [requestCameraAccess]);
 
   // Resize canvas to match video dimensions
   useEffect(() => {
@@ -228,6 +262,39 @@ function GameComponent() {
     };
   }, [cameraStatus]);
 
+  // Handle camera ready delay
+  useEffect(() => {
+    if (cameraStatus === "success") {
+      // Reset the delay state when camera becomes ready
+      setCameraReadyDelayPassed(false);
+
+      // Set timeout to allow overlay after 300ms
+      cameraReadyTimeoutRef.current = setTimeout(() => {
+        setCameraReadyDelayPassed(true);
+        cameraReadyTimeoutRef.current = null;
+      }, CAMERA_READY_DELAY);
+    } else {
+      // Clear timeout and reset state when camera is not ready
+      if (cameraReadyTimeoutRef.current) {
+        clearTimeout(cameraReadyTimeoutRef.current);
+        cameraReadyTimeoutRef.current = null;
+      }
+      setCameraReadyDelayPassed(false);
+    }
+  }, [cameraStatus]);
+
+  // Cleanup face detection timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (faceDetectionTimeoutRef.current) {
+        clearTimeout(faceDetectionTimeoutRef.current);
+      }
+      if (cameraReadyTimeoutRef.current) {
+        clearTimeout(cameraReadyTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const CameraFallback = () => (
     <div
       className="bg-brand-dark rounded-4xl border-4 border-brand-orange-dark shadow-2xl flex flex-col items-center justify-center text-center p-8"
@@ -236,6 +303,9 @@ function GameComponent() {
         height: `calc(100vh - ${CANVAS_PADDING_Y * 2}px)`,
       }}
     >
+      <i
+        className={`fas ${cameraStatus === "loading" ? "fa-camera-retro" : "fa-exclamation-triangle"} text-brand-cream text-6xl mb-6`}
+      />
       <h1 className="font-display text-brand-cream text-4xl md:text-6xl mb-8">
         {cameraStatus === "loading"
           ? "Getting your close-up ready..."
@@ -244,13 +314,42 @@ function GameComponent() {
       <p className="font-body text-brand-cream text-lg md:text-xl max-w-md leading-relaxed">
         {cameraStatus === "loading"
           ? "Please wait while we access your camera."
-          : "Please give your browser permission to use your camera and refresh the page so we can get this party started!"}
+          : "Please give your browser permission to use your camera so we can get this party started!"}
       </p>
+      {cameraStatus === "error" && (
+        <Button
+          onClick={requestCameraAccess}
+          variant="default"
+          size="lg"
+          className="mt-6"
+        >
+          <i className="fas fa-video" />
+          Allow Camera Access
+        </Button>
+      )}
       {modelError && (
         <p className="font-body text-red-400 text-sm mt-4 max-w-md">
           MediaPipe Error: {modelError}
         </p>
       )}
+    </div>
+  );
+
+  const NoFaceOverlay = () => (
+    <div
+      className="absolute inset-0 bg-brand-dark/80 backdrop-blur-sm rounded-4xl flex flex-col items-center justify-center text-center p-8"
+      style={{
+        zIndex: 20,
+      }}
+    >
+      <i className="fas fa-face-smile text-brand-cream text-6xl mb-6" />
+      <h1 className="font-display text-brand-cream text-3xl md:text-5xl mb-6">
+        Where'd you go, gorgeous?
+      </h1>
+      <p className="font-body text-brand-cream text-lg md:text-xl max-w-md leading-relaxed">
+        I can't see your beautiful face! Don't be shy, make sure
+        you're centered in the frame and well-lit.
+      </p>
     </div>
   );
 
@@ -455,6 +554,11 @@ function GameComponent() {
               <span>Muted</span>
             </div>
           )}
+
+          {/* No face detected overlay */}
+          {cameraStatus === "success" &&
+            !faceDetected &&
+            cameraReadyDelayPassed && <NoFaceOverlay />}
 
           {/* Vignette overlay */}
           <div
