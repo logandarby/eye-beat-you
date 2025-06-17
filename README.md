@@ -1,54 +1,45 @@
-# React + TypeScript + Vite
+# Eye Beat You! 👁️⭐
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A ridiculous facial-recognition web-game where you contort your face to make silly sounds!
 
-Currently, two official plugins are available:
+## How to Play
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Allow camera permissions when prompted
+2. Position your face in the camera view
+3. Blink your eyes to trigger blink sounds
+4. Open your mouth to trigger mouth-open sounds
+5. Press 'd' to toggle debug visualization modes
 
-## Expanding the ESLint configuration
+## Development
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Install dependencies
+npm install
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Deploy to GitHub Pages
+npm run deploy
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Live Demo
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Visit the live demo at: https://logandarby.github.io/eye-beat-you/
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+## References
+
+The blink/mouth movement detection algorithms were inspired by this paper:
+
+- Thiha, S., & Rajasekera, J. (2023). [Efficient Online Engagement Analytics Algorithm Toolkit That Can Run on Edge](https://doi.org/10.3390/a16020086). _Algorithms_, 16(2), 86.
+
+MediaPipe for Face Landmark Detection
+
+- Google AI for Developers. (2025). [Face landmark detection guide for Web - MediaPipe](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker/web_js). _Google AI Edge_.
+
+---
+
+Built with ❤️ by Logan Darby

@@ -332,6 +332,12 @@ function GameComponent() {
                 </g>
               </svg>
             </div>
+
+            <img
+              src="/eye-beat-you/star.svg"
+              alt="Star sticker"
+              className="star-sticker"
+            />
           </>
         )}
         <div
@@ -378,6 +384,18 @@ function GameComponent() {
 
       {/* Show fallback when camera is not ready */}
       {cameraStatus !== "success" && <CameraFallback />}
+
+      {/* Footer */}
+      <footer className="footer-credits">
+        <a
+          href="https://github.com/logandarby"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="footer-link"
+        >
+          Built with ❤️ by Logan Darby
+        </a>
+      </footer>
     </div>
   );
 }
