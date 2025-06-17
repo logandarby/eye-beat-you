@@ -7,8 +7,11 @@ import {
   RIGHT_EYE_LANDMARKS,
   EAR_VELOCITY_THRESHOLD,
   EAR_VELOCITY_WINDOW_SIZE,
+  MAR_VELOCITY_THRESHOLD,
+  MAR_VELOCITY_WINDOW_SIZE,
+  MEDIAN_FILTER_WINDOW_SIZE,
 } from "./constants";
-import { RollingAverage } from "./rollingAverage";
+import { MedianFilter } from "./medianFilter";
 
 interface OrificeState {
   isOpen: boolean;
@@ -38,9 +41,20 @@ export class FaceAnalyzer {
   private previousLeftEAR: number | null = null;
   private previousRightEAR: number | null = null;
 
-  // Rolling averages for EAR velocity (finite differences)
-  private leftEARVelocity: RollingAverage;
-  private rightEARVelocity: RollingAverage;
+  // Previous MAR value for velocity calculation
+  private previousMouthMAR: number | null = null;
+
+  // Median filters for EAR velocity (finite differences)
+  private leftEARVelocity: MedianFilter;
+  private rightEARVelocity: MedianFilter;
+
+  // Median filter for MAR velocity (finite differences)
+  private mouthMARVelocity: MedianFilter;
+
+  // Median filters for smoothing EAR and MAR values
+  private leftEARFilter: MedianFilter;
+  private rightEARFilter: MedianFilter;
+  private mouthMARFilter: MedianFilter;
 
   constructor(
     private readonly onEvent: (
@@ -48,13 +62,21 @@ export class FaceAnalyzer {
       event: "open" | "close",
     ) => void,
   ) {
-    // Initialize rolling averages for EAR velocity tracking
-    this.leftEARVelocity = new RollingAverage(
+    // Initialize median filters for EAR velocity tracking
+    this.leftEARVelocity = new MedianFilter(EAR_VELOCITY_WINDOW_SIZE);
+    this.rightEARVelocity = new MedianFilter(
       EAR_VELOCITY_WINDOW_SIZE,
     );
-    this.rightEARVelocity = new RollingAverage(
-      EAR_VELOCITY_WINDOW_SIZE,
+
+    // Initialize median filter for MAR velocity tracking
+    this.mouthMARVelocity = new MedianFilter(
+      MAR_VELOCITY_WINDOW_SIZE,
     );
+
+    // Initialize median filters for smoothing ratios
+    this.leftEARFilter = new MedianFilter(MEDIAN_FILTER_WINDOW_SIZE);
+    this.rightEARFilter = new MedianFilter(MEDIAN_FILTER_WINDOW_SIZE);
+    this.mouthMARFilter = new MedianFilter(MEDIAN_FILTER_WINDOW_SIZE);
   }
 
   /**
@@ -171,30 +193,41 @@ export class FaceAnalyzer {
 
     // For eyes, use velocity-based detection
     if (orificeName === "leftEye" || orificeName === "rightEye") {
-      const velocityAverage =
+      const velocityMedian =
         orificeName === "leftEye"
-          ? this.leftEARVelocity.getAverage()
-          : this.rightEARVelocity.getAverage();
+          ? this.leftEARVelocity.getMedian()
+          : this.rightEARVelocity.getMedian();
 
       // Only trigger blink events if velocity is above threshold
       if (
         state.previouslyOpen &&
         !state.isOpen &&
-        Math.abs(velocityAverage) > EAR_VELOCITY_THRESHOLD
+        Math.abs(velocityMedian) > EAR_VELOCITY_THRESHOLD
       ) {
         this.onEvent(orificeName, "close");
       } else if (
         !state.previouslyOpen &&
         state.isOpen &&
-        Math.abs(velocityAverage) > EAR_VELOCITY_THRESHOLD
+        Math.abs(velocityMedian) > EAR_VELOCITY_THRESHOLD
       ) {
         this.onEvent(orificeName, "open");
       }
     } else {
-      // For mouth, use traditional state-based detection
-      if (state.previouslyOpen && !state.isOpen) {
+      // For mouth, use velocity-based detection
+      const velocityMedian = this.mouthMARVelocity.getMedian();
+
+      // Only trigger mouth events if velocity is above threshold
+      if (
+        state.previouslyOpen &&
+        !state.isOpen &&
+        Math.abs(velocityMedian) > MAR_VELOCITY_THRESHOLD
+      ) {
         this.onEvent(orificeName, "close");
-      } else if (!state.previouslyOpen && state.isOpen) {
+      } else if (
+        !state.previouslyOpen &&
+        state.isOpen &&
+        Math.abs(velocityMedian) > MAR_VELOCITY_THRESHOLD
+      ) {
         this.onEvent(orificeName, "open");
       }
     }
@@ -223,14 +256,25 @@ export class FaceAnalyzer {
       RIGHT_EYE_LANDMARKS,
     );
 
-    const leftEAR = this.calculateEAR(leftEyeLandmarks);
-    const rightEAR = this.calculateEAR(rightEyeLandmarks);
+    // Calculate raw EAR values
+    const rawLeftEAR = this.calculateEAR(leftEyeLandmarks);
+    const rawRightEAR = this.calculateEAR(rightEyeLandmarks);
 
-    // Calculate MAR for mouth
+    // Calculate raw MAR for mouth
     const mouthLandmarks = this.extractMouthLandmarks(landmarks);
-    const mouthMAR = this.calculateMAR(mouthLandmarks);
+    const rawMouthMAR = this.calculateMAR(mouthLandmarks);
 
-    // Calculate EAR velocities (finite differences) and update rolling averages
+    // Apply median filtering to smooth the values
+    this.leftEARFilter.addValue(rawLeftEAR);
+    this.rightEARFilter.addValue(rawRightEAR);
+    this.mouthMARFilter.addValue(rawMouthMAR);
+
+    // Get filtered values
+    const leftEAR = this.leftEARFilter.getMedian();
+    const rightEAR = this.rightEARFilter.getMedian();
+    const mouthMAR = this.mouthMARFilter.getMedian();
+
+    // Calculate EAR velocities (finite differences) and update median filters
     if (this.previousLeftEAR !== null) {
       const leftVelocity = leftEAR - this.previousLeftEAR;
       this.leftEARVelocity.addValue(leftVelocity);
@@ -241,9 +285,16 @@ export class FaceAnalyzer {
       this.rightEARVelocity.addValue(rightVelocity);
     }
 
+    // Calculate MAR velocity (finite differences) and update median filter
+    if (this.previousMouthMAR !== null) {
+      const mouthVelocity = mouthMAR - this.previousMouthMAR;
+      this.mouthMARVelocity.addValue(mouthVelocity);
+    }
+
     // Store current values for external access and next iteration
     this.previousLeftEAR = this.currentLeftEAR;
     this.previousRightEAR = this.currentRightEAR;
+    this.previousMouthMAR = this.currentMouthMAR;
     this.currentLeftEAR = leftEAR;
     this.currentRightEAR = rightEAR;
     this.currentMouthMAR = mouthMAR;
@@ -278,8 +329,15 @@ export class FaceAnalyzer {
     // Reset velocity tracking
     this.previousLeftEAR = null;
     this.previousRightEAR = null;
+    this.previousMouthMAR = null;
     this.leftEARVelocity.reset();
     this.rightEARVelocity.reset();
+    this.mouthMARVelocity.reset();
+
+    // Reset median filters
+    this.leftEARFilter.reset();
+    this.rightEARFilter.reset();
+    this.mouthMARFilter.reset();
   }
 
   /**
@@ -305,14 +363,16 @@ export class FaceAnalyzer {
   }
 
   /**
-   * Get current EAR velocity information
+   * Get current EAR and MAR velocity information
    */
   public getCurrentVelocities() {
     return {
-      leftEARVelocity: this.leftEARVelocity.getAverage(),
-      rightEARVelocity: this.rightEARVelocity.getAverage(),
+      leftEARVelocity: this.leftEARVelocity.getMedian(),
+      rightEARVelocity: this.rightEARVelocity.getMedian(),
+      mouthMARVelocity: this.mouthMARVelocity.getMedian(),
       leftVelocityCount: this.leftEARVelocity.getCount(),
       rightVelocityCount: this.rightEARVelocity.getCount(),
+      mouthVelocityCount: this.mouthMARVelocity.getCount(),
     };
   }
 }
