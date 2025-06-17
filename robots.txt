@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://logandarby.github.io/eye-beat-you/sitemap.xml
+
+Disallow: /*.wasm$
+Disallow: /*.tflite$
+Disallow: /*.task$ 
