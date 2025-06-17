@@ -22,9 +22,6 @@ import {
 import { Button } from "@/components/ui/button";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
-const CANVAS_PADDING_X = 80 * 2;
-const CANVAS_PADDING_Y = 80;
-
 type LegacyHTMLVideoElement =
   | Omit<HTMLVideoElement, "srcObject">
   | Omit<HTMLVideoElement, "src">;
@@ -154,9 +151,14 @@ function GameComponent() {
     if (!videoElement) return;
 
     try {
-      // Request access to webcam
+      // Request access to webcam with mobile-optimized constraints
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: {
+          facingMode: "user", // Prefer front-facing camera
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
+        },
         audio: false,
       });
       setCameraStatus("loading");
@@ -188,8 +190,54 @@ function GameComponent() {
       }
       console.log("Successfully set up webcam");
     } catch (error) {
-      console.error("Error accessing webcam:", error);
-      setCameraStatus("error");
+      console.error(
+        "Error accessing webcam with specific constraints:",
+        error,
+      );
+
+      // Fallback: Try with simpler constraints
+      try {
+        console.log("Trying fallback camera constraints...");
+        const fallbackStream =
+          await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false,
+          });
+
+        const video = videoElement as LegacyHTMLVideoElement;
+
+        // Set up event listeners
+        const handleCanPlay = () => {
+          setCameraStatus("success");
+          videoElement.removeEventListener("canplay", handleCanPlay);
+        };
+
+        const handleError = () => {
+          console.error("Video playback error");
+          setCameraStatus("error");
+          videoElement.removeEventListener("error", handleError);
+        };
+
+        videoElement.addEventListener("canplay", handleCanPlay);
+        videoElement.addEventListener("error", handleError);
+
+        if ("srcObject" in video) {
+          video.srcObject = fallbackStream;
+        } else {
+          video.src = URL.createObjectURL(
+            fallbackStream as unknown as Blob,
+          );
+        }
+        console.log(
+          "Successfully set up webcam with fallback constraints",
+        );
+      } catch (fallbackError) {
+        console.error(
+          "Error accessing webcam with fallback constraints:",
+          fallbackError,
+        );
+        setCameraStatus("error");
+      }
     }
   }, []);
 
@@ -296,15 +344,13 @@ function GameComponent() {
   }, []);
 
   const CameraFallback = () => (
-    <div
-      className="bg-brand-dark rounded-4xl border-4 border-brand-orange-dark shadow-2xl flex flex-col items-center justify-center text-center p-8"
-      style={{
-        width: `calc(100vw - ${CANVAS_PADDING_X * 2}px)`,
-        height: `calc(100vh - ${CANVAS_PADDING_Y * 2}px)`,
-      }}
-    >
+    <div className="bg-brand-dark rounded-4xl border-4 border-brand-orange-dark shadow-2xl flex flex-col items-center justify-center text-center p-8 w-full h-[calc(100vh-2rem)] sm:h-[calc(100vh-3rem)] md:h-[calc(100vh-4rem)] lg:h-[calc(100vh-6rem)] xl:h-[calc(100vh-10rem)]">
       <i
-        className={`fas ${cameraStatus === "loading" ? "fa-camera-retro" : "fa-exclamation-triangle"} text-brand-cream text-6xl mb-6`}
+        className={`fas ${
+          cameraStatus === "loading"
+            ? "fa-camera-retro"
+            : "fa-exclamation-triangle"
+        } text-brand-cream text-6xl mb-6`}
       />
       <h1 className="font-display text-brand-cream text-4xl md:text-6xl mb-8">
         {cameraStatus === "loading"
@@ -354,16 +400,11 @@ function GameComponent() {
   );
 
   return (
-    <div
-      className="bg-background min-h-screen texture-bg"
-      style={{
-        padding: `${CANVAS_PADDING_Y}px ${CANVAS_PADDING_X}px`,
-      }}
-    >
+    <div className="bg-background min-h-screen texture-bg p-4 sm:p-6 md:p-8 lg:p-12 xl:p-20">
       <div className="relative overflow-visible">
         {cameraStatus === "success" && (
           <>
-            <div className="cute-tag">
+            <div className="cute-tag scale-75 sm:scale-100 origin-top-right">
               <div className="cute-tag-hello">
                 <svg viewBox="0 0 120 20">
                   <defs>
@@ -387,7 +428,7 @@ function GameComponent() {
               <span className="cute-tag-gorgeous">Gorgeous!</span>
             </div>
 
-            <div className="button-controls">
+            <div className="button-controls top-1/2 -translate-y-1/2">
               <Dialog onOpenChange={setIsMuted}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="icon">
@@ -441,12 +482,14 @@ function GameComponent() {
                 onClick={() => setIsMuted(!isMuted)}
               >
                 <i
-                  className={`fas ${isMuted ? "fa-volume-xmark" : "fa-volume-high"}`}
+                  className={`fas ${
+                    isMuted ? "fa-volume-xmark" : "fa-volume-high"
+                  }`}
                 />
               </Button>
             </div>
 
-            <div className="warning-notice">
+            <div className="warning-notice scale-75 sm:scale-100 origin-bottom-left">
               <div className="warning-notice-inner">
                 <div className="warning-notice-title">WARNING:</div>
                 <div className="warning-notice-text">
@@ -456,7 +499,7 @@ function GameComponent() {
               </div>
             </div>
 
-            <div className="circle-sticker">
+            <div className="circle-sticker scale-75 sm:scale-100 origin-left -translate-x-8 sm:translate-x-6">
               <svg viewBox="0 0 120 120">
                 <defs>
                   <path
@@ -481,7 +524,7 @@ function GameComponent() {
               </svg>
             </div>
 
-            <div className="encouragement-badge">
+            <div className="encouragement-badge scale-75 sm:scale-100 origin-top-left">
               <div className="encouragement-text-bg"></div>
               <div className="encouragement-orange"></div>
               <svg viewBox="0 0 180 180">
@@ -514,18 +557,14 @@ function GameComponent() {
             <img
               src="/eye-beat-you/star.svg"
               alt="Star sticker"
-              className="star-sticker"
+              className="star-sticker scale-75 sm:scale-100 origin-bottom-right"
             />
           </>
         )}
         <div
-          className={`relative rounded-4xl border-4 border-brand-orange-dark shadow-2xl drop-shadow-2xl overflow-hidden ${
+          className={`relative rounded-4xl border-4 border-brand-orange-dark shadow-2xl drop-shadow-2xl overflow-hidden w-full h-[calc(100vh-2rem)] sm:h-[calc(100vh-3rem)] md:h-[calc(100vh-4rem)] lg:h-[calc(100vh-6rem)] xl:h-[calc(100vh-10rem)] ${
             cameraStatus === "success" ? "block" : "hidden"
           }`}
-          style={{
-            width: `calc(100vw - ${CANVAS_PADDING_X * 2}px)`,
-            height: `calc(100vh - ${CANVAS_PADDING_Y * 2}px)`,
-          }}
         >
           <video
             ref={videoRef}
