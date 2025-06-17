@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import {
+  FaceLandmarker,
+  FilesetResolver,
+} from "@mediapipe/tasks-vision";
 
 interface UseFaceLandmarkerReturn {
   faceLandmarker: FaceLandmarker | null;
@@ -40,7 +43,9 @@ export function useFaceLandmarker(): UseFaceLandmarkerReturn {
         if (isMounted) {
           setFaceLandmarker(landmarker);
           setIsLoaded(true);
-          console.log("MediaPipe FaceLandmarker initialized successfully");
+          console.log(
+            "MediaPipe FaceLandmarker initialized successfully",
+          );
         }
       } catch (err) {
         console.error("Error initializing FaceLandmarker:", err);

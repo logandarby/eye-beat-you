@@ -1,6 +1,18 @@
 import { useEffect, useRef, useCallback } from "react";
-import { FaceLandmarker, DrawingUtils } from "@mediapipe/tasks-vision";
+import {
+  FaceLandmarker,
+  DrawingUtils,
+} from "@mediapipe/tasks-vision";
 import type { FaceLandmarkerResult } from "@mediapipe/tasks-vision";
+import {
+  LEFT_EYE_LANDMARKS,
+  MOUTH_LANDMARKS,
+  RIGHT_EYE_LANDMARKS,
+} from "@/lib/faceAnalyzer";
+import {
+  drawDebugPointsOntoCanvas,
+  drawCalculationLines,
+} from "@/lib/debug.util";
 
 interface UseFacialLandmarkDetectionProps {
   videoElement: HTMLVideoElement | null;
@@ -8,7 +20,7 @@ interface UseFacialLandmarkDetectionProps {
   faceLandmarker: FaceLandmarker | null;
   isModelLoaded: boolean;
   isEnabled: boolean;
-  isDrawing: boolean;
+  debugMode: "off" | "points" | "lines" | "connectors";
   onResults?: (results: FaceLandmarkerResult) => void;
 }
 
@@ -18,11 +30,93 @@ export function useFacialLandmarkDetection({
   faceLandmarker,
   isModelLoaded,
   isEnabled,
-  isDrawing,
+  debugMode,
   onResults,
 }: UseFacialLandmarkDetectionProps) {
   const animationFrameRef = useRef<number | null>(null);
   const lastVideoTimeRef = useRef<number>(-1);
+
+  const drawDebugPoints = useCallback(
+    (
+      landmarks: { x: number; y: number; z?: number }[],
+      canvasCtx: CanvasRenderingContext2D,
+    ) => {
+      // Draw debug points for all landmark groups
+      drawDebugPointsOntoCanvas({
+        landmarks,
+        landmarkIndices: MOUTH_LANDMARKS,
+        canvasCtx,
+        label: "M",
+      });
+      drawDebugPointsOntoCanvas({
+        landmarks,
+        landmarkIndices: LEFT_EYE_LANDMARKS,
+        canvasCtx,
+        label: "L",
+      });
+      drawDebugPointsOntoCanvas({
+        landmarks,
+        landmarkIndices: RIGHT_EYE_LANDMARKS,
+        canvasCtx,
+        label: "R",
+      });
+
+      // Draw title
+      canvasCtx.font = "bold 20px Arial";
+      canvasCtx.fillStyle = "#00FF00";
+      canvasCtx.strokeStyle = "#000000";
+      canvasCtx.lineWidth = 3;
+      const titleText = "LANDMARK POINTS (Press B to cycle modes)";
+      canvasCtx.strokeText(titleText, 20, 40);
+      canvasCtx.fillText(titleText, 20, 40);
+    },
+    [],
+  );
+
+  const drawCalculationDebug = useCallback(
+    (
+      landmarks: { x: number; y: number; z?: number }[],
+      canvasCtx: CanvasRenderingContext2D,
+    ) => {
+      // Draw calculation lines for left eye EAR
+      drawCalculationLines({
+        landmarks,
+        landmarkIndices: LEFT_EYE_LANDMARKS,
+        canvasCtx,
+        label: "L",
+        calculationType: "EAR",
+      });
+
+      // Draw calculation lines for right eye EAR
+      drawCalculationLines({
+        landmarks,
+        landmarkIndices: RIGHT_EYE_LANDMARKS,
+        canvasCtx,
+        label: "R",
+        calculationType: "EAR",
+      });
+
+      // Draw calculation lines for mouth MAR
+      drawCalculationLines({
+        landmarks,
+        landmarkIndices: MOUTH_LANDMARKS,
+        canvasCtx,
+        label: "M",
+        calculationType: "MAR",
+      });
+
+      // Draw title
+      canvasCtx.font = "bold 20px Arial";
+      canvasCtx.fillStyle = "#FFFFFF";
+      canvasCtx.strokeStyle = "#000000";
+      canvasCtx.lineWidth = 3;
+      const titleText =
+        "EAR/MAR CALCULATION LINES (Press B to cycle modes)";
+      canvasCtx.strokeText(titleText, 20, 40);
+      canvasCtx.fillText(titleText, 20, 40);
+    },
+    [],
+  );
 
   const drawLandmarks = useCallback(
     (
@@ -40,26 +134,38 @@ export function useFacialLandmarkDetection({
         canvasCtx.canvas.height,
       );
 
-      // Draw landmarks for each detected face - only eyes and mouth
-      for (const landmarks of results.faceLandmarks) {
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
-          { color: "#FF3030" },
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
-          { color: "#30FF30" },
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_LIPS,
-          { color: "#E0E0E0" },
-        );
+      if (debugMode === "points") {
+        // Debug mode: Draw landmark points with labels
+        for (const landmarks of results.faceLandmarks) {
+          drawDebugPoints(landmarks, canvasCtx);
+        }
+      } else if (debugMode === "lines") {
+        // Debug mode: Draw calculation lines
+        for (const landmarks of results.faceLandmarks) {
+          drawCalculationDebug(landmarks, canvasCtx);
+        }
+      } else if (debugMode === "connectors") {
+        // Normal mode: Draw landmarks for each detected face - only eyes and mouth
+        for (const landmarks of results.faceLandmarks) {
+          drawingUtils.drawConnectors(
+            landmarks,
+            FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
+            { color: "#FF3030" },
+          );
+          drawingUtils.drawConnectors(
+            landmarks,
+            FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
+            { color: "#30FF30" },
+          );
+          drawingUtils.drawConnectors(
+            landmarks,
+            FaceLandmarker.FACE_LANDMARKS_LIPS,
+            { color: "#E0E0E0" },
+          );
+        }
       }
     },
-    [],
+    [debugMode, drawDebugPoints, drawCalculationDebug],
   );
 
   const detectAndDraw = useCallback(async () => {
@@ -93,8 +199,8 @@ export function useFacialLandmarkDetection({
             onResults(results);
           }
 
-          // Only draw landmarks if drawing is enabled
-          if (isDrawing) {
+          // Only draw landmarks if drawing is enabled OR debug mode is enabled
+          if (debugMode !== "off") {
             const drawingUtils = new DrawingUtils(canvasCtx);
             drawLandmarks(results, canvasCtx, drawingUtils);
           }
@@ -105,7 +211,8 @@ export function useFacialLandmarkDetection({
     }
 
     if (isEnabled) {
-      animationFrameRef.current = requestAnimationFrame(detectAndDraw);
+      animationFrameRef.current =
+        requestAnimationFrame(detectAndDraw);
     }
   }, [
     videoElement,
@@ -113,7 +220,7 @@ export function useFacialLandmarkDetection({
     faceLandmarker,
     isModelLoaded,
     isEnabled,
-    isDrawing,
+    debugMode,
     drawLandmarks,
     onResults,
   ]);
@@ -146,9 +253,9 @@ export function useFacialLandmarkDetection({
     detectAndDraw,
   ]);
 
-  // Clear canvas when drawing is disabled
+  // Clear canvas when both drawing and debug mode are disabled
   useEffect(() => {
-    if (!isDrawing && canvasElement) {
+    if (debugMode === "off" && canvasElement) {
       const canvasCtx = canvasElement.getContext("2d");
       if (canvasCtx) {
         canvasCtx.clearRect(
@@ -159,7 +266,7 @@ export function useFacialLandmarkDetection({
         );
       }
     }
-  }, [isDrawing, canvasElement]);
+  }, [debugMode, canvasElement]);
 
   // Cleanup on unmount
   useEffect(() => {

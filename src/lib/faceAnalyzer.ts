@@ -1,0 +1,273 @@
+import { type FaceLandmarkerResult } from "@mediapipe/tasks-vision";
+
+// Thresholds for determining open/closed state
+const EYE_ASPECT_RATIO_THRESHOLD = 0.18;
+const MOUTH_ASPECT_RATIO_THRESHOLD = 0.3;
+
+// MediaPipe face landmark indices
+// These are the specific 6 points used for EAR calculation from each eye
+export const LEFT_EYE_LANDMARKS = [
+  362, // Left corner
+  385, // Top outer
+  387, // Top inner
+  263, // Right corner
+  373, // Bottom inner
+  380, // Bottom outer
+];
+
+// This is definitely right!
+export const RIGHT_EYE_LANDMARKS = [
+  33, // Left corner
+  160, // Top outer
+  158, // Top inner
+  133, // Right corner
+  153, // Bottom inner
+  144, // Bottom outer
+];
+
+// Mouth landmark indices for mouth aspect ratio calculation
+export const MOUTH_LANDMARKS = [
+  78, // Left corner
+  308, // Right corner
+  81, // Top outer
+  178, // Bottom outer
+  13, // Top middle
+  14, // Bottom middle
+  312, // Bottom inner
+  317, // Top inner
+];
+
+interface OrificeState {
+  isOpen: boolean;
+  previouslyOpen: boolean;
+}
+
+export class FaceAnalyzer {
+  private leftEyeState: OrificeState = {
+    isOpen: true,
+    previouslyOpen: true,
+  };
+  private rightEyeState: OrificeState = {
+    isOpen: true,
+    previouslyOpen: true,
+  };
+  private mouthState: OrificeState = {
+    isOpen: false,
+    previouslyOpen: false,
+  };
+
+  // Store current EAR values for external access
+  private currentLeftEAR: number = 0;
+  private currentRightEAR: number = 0;
+  private currentMouthMAR: number = 0;
+
+  constructor(
+    private readonly onEvent: (
+      bodyPart: "leftEye" | "rightEye" | "mouth",
+      event: "open" | "close",
+    ) => void,
+  ) {}
+
+  /**
+   * Calculate Eye Aspect Ratio (EAR) using the standard formula
+   * EAR = (|p2-p6| + |p3-p5|) / (2 * |p1-p4|)
+   * Where:
+   * p1, p4 = horizontal eye corners
+   * p2, p6 = top and bottom outer vertical points
+   * p3, p5 = top and bottom inner vertical points
+   */
+  private calculateEAR(
+    eyeLandmarks: Array<{ x: number; y: number; z?: number }>,
+  ): number {
+    if (eyeLandmarks.length < 6) {
+      throw new Error("Eye landmarks length is not 6");
+    }
+
+    // Calculate distances between points
+    const p1 = eyeLandmarks[0]; // Left corner
+    const p2 = eyeLandmarks[1]; // Top outer
+    const p3 = eyeLandmarks[2]; // Top inner
+    const p4 = eyeLandmarks[3]; // Right corner
+    const p5 = eyeLandmarks[4]; // Bottom inner
+    const p6 = eyeLandmarks[5]; // Bottom outer
+
+    const vertical1 = this.distance(p2, p6);
+    const vertical2 = this.distance(p3, p5);
+    const horizontal = this.distance(p1, p4);
+
+    if (horizontal === 0) return 0;
+
+    // EAR calculation using standard formula
+    return (vertical1 + vertical2) / (2.0 * horizontal);
+  }
+
+  private distance(
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+  ): number {
+    return Math.sqrt(
+      Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2),
+    );
+  }
+
+  /**
+   * Calculate Mouth Aspect Ratio (MAR)
+   * Similar to EAR but for mouth opening
+   */
+  private calculateMAR(
+    mouthLandmarks: Array<{ x: number; y: number; z?: number }>,
+  ): number {
+    if (mouthLandmarks.length !== 8) {
+      throw new Error("Mouth landmarks length is not 8");
+    }
+
+    // Vertical distances (mouth height at different points)
+    const vertical1 = this.distance(
+      mouthLandmarks[2],
+      mouthLandmarks[3],
+    );
+    const vertical2 = this.distance(
+      mouthLandmarks[4],
+      mouthLandmarks[5],
+    );
+    const vertical3 = this.distance(
+      mouthLandmarks[6],
+      mouthLandmarks[7],
+    );
+
+    // Horizontal distance (mouth width)
+    const horizontal = this.distance(
+      mouthLandmarks[0],
+      mouthLandmarks[1],
+    );
+
+    // Avoid division by zero
+    if (horizontal === 0) return 0;
+
+    // MAR calculation
+    return (vertical1 + vertical2 + vertical3) / (3.0 * horizontal);
+  }
+
+  /**
+   * Extract specific eye landmarks from the full landmark array
+   */
+  private extractEyeLandmarks(
+    allLandmarks: Array<{ x: number; y: number; z?: number }>,
+    eyeIndices: number[],
+  ): Array<{ x: number; y: number; z?: number }> {
+    return eyeIndices.map((index) => allLandmarks[index]);
+  }
+
+  /**
+   * Extract mouth landmarks from the full landmark array
+   */
+  private extractMouthLandmarks(
+    allLandmarks: Array<{ x: number; y: number; z?: number }>,
+  ): Array<{ x: number; y: number; z?: number }> {
+    return MOUTH_LANDMARKS.slice(0, 12).map(
+      (index) => allLandmarks[index],
+    );
+  }
+
+  /**
+   * Update state and log transitions
+   */
+  private updateOrificeState(
+    state: OrificeState,
+    isCurrentlyOpen: boolean,
+    orificeName: "leftEye" | "rightEye" | "mouth",
+  ): void {
+    state.previouslyOpen = state.isOpen;
+    state.isOpen = isCurrentlyOpen;
+    if (state.previouslyOpen && !state.isOpen) {
+      this.onEvent(orificeName, "close");
+    } else if (!state.previouslyOpen && state.isOpen) {
+      this.onEvent(orificeName, "open");
+    }
+  }
+
+  /**
+   * Analyze face landmarks and detect blinks/mouth movements
+   */
+  public analyzeFace(results: FaceLandmarkerResult): void {
+    if (
+      !results.faceLandmarks ||
+      results.faceLandmarks.length === 0
+    ) {
+      return;
+    }
+
+    const landmarks = results.faceLandmarks[0];
+
+    // Calculate EAR for both eyes using correct landmark indices
+    const leftEyeLandmarks = this.extractEyeLandmarks(
+      landmarks,
+      LEFT_EYE_LANDMARKS,
+    );
+    const rightEyeLandmarks = this.extractEyeLandmarks(
+      landmarks,
+      RIGHT_EYE_LANDMARKS,
+    );
+
+    const leftEAR = this.calculateEAR(leftEyeLandmarks);
+    const rightEAR = this.calculateEAR(rightEyeLandmarks);
+
+    // Calculate MAR for mouth
+    const mouthLandmarks = this.extractMouthLandmarks(landmarks);
+    const mouthMAR = this.calculateMAR(mouthLandmarks);
+
+    // Store current values for external access
+    this.currentLeftEAR = leftEAR;
+    this.currentRightEAR = rightEAR;
+    this.currentMouthMAR = mouthMAR;
+
+    // Determine if orifices are open or closed
+    const leftEyeOpen = leftEAR > EYE_ASPECT_RATIO_THRESHOLD;
+    const rightEyeOpen = rightEAR > EYE_ASPECT_RATIO_THRESHOLD;
+    const mouthOpen = mouthMAR > MOUTH_ASPECT_RATIO_THRESHOLD;
+
+    // Update states and log transitions
+    this.updateOrificeState(
+      this.leftEyeState,
+      leftEyeOpen,
+      "leftEye",
+    );
+    this.updateOrificeState(
+      this.rightEyeState,
+      rightEyeOpen,
+      "rightEye",
+    );
+    this.updateOrificeState(this.mouthState, mouthOpen, "mouth");
+  }
+
+  /**
+   * Reset all states (useful for when detection restarts)
+   */
+  public reset(): void {
+    this.leftEyeState = { isOpen: true, previouslyOpen: true };
+    this.rightEyeState = { isOpen: true, previouslyOpen: true };
+    this.mouthState = { isOpen: false, previouslyOpen: false };
+  }
+
+  /**
+   * Get current states for external use
+   */
+  public getStates() {
+    return {
+      leftEye: this.leftEyeState.isOpen,
+      rightEye: this.rightEyeState.isOpen,
+      mouth: this.mouthState.isOpen,
+    };
+  }
+
+  /**
+   * Get current EAR and MAR values
+   */
+  public getCurrentRatios() {
+    return {
+      leftEAR: this.currentLeftEAR,
+      rightEAR: this.currentRightEAR,
+      mouthMAR: this.currentMouthMAR,
+    };
+  }
+}

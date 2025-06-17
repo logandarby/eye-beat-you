@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useFaceLandmarker } from "../hooks/useFaceLandmarker";
 import { useFacialLandmarkDetection } from "../hooks/useFacialLandmarkDetection";
+import { FaceAnalyzer } from "../lib/faceAnalyzer";
 import type { FaceLandmarkerResult } from "@mediapipe/tasks-vision";
 
 const CANVAS_PADDING_PX = 80;
@@ -16,7 +17,9 @@ function GameComponent() {
     "loading" | "success" | "error"
   >("loading");
   const detectionEnabled = true;
-  const [isDrawing, setIsDrawing] = useState(false);
+  const [debugMode, setDebugMode] = useState<
+    "off" | "points" | "lines" | "connectors"
+  >("off");
 
   // Initialize MediaPipe FaceLandmarker
   const {
@@ -25,26 +28,27 @@ function GameComponent() {
     error: modelError,
   } = useFaceLandmarker();
 
-  let b = true;
+  // Callback to handle face events (on open or close)
+  const handleFaceEvent = useCallback(
+    (
+      bodyPart: "leftEye" | "rightEye" | "mouth",
+      event: "open" | "close",
+    ) => {
+      console.log(`👁️ ${bodyPart} ${event}`);
+    },
+    [],
+  );
 
-  // Mock callback to log detection results
+  const faceAnalyzerRef = useRef<FaceAnalyzer>(
+    new FaceAnalyzer(handleFaceEvent),
+  );
+
+  // Callback to analyze face landmarks for blinks and mouth movements
   const handleResults = useCallback(
     (results: FaceLandmarkerResult) => {
-      if (!b) return;
-      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-        const landmarks = results.faceLandmarks[0];
-        console.log("Face detection results:", {
-          facesDetected: results.faceLandmarks.length,
-          landmarkCount: landmarks.length,
-          firstLandmark: landmarks[0],
-          blendShapes: results.faceBlendshapes
-            ? results.faceBlendshapes.length
-            : 0,
-        });
-        b = false;
-      }
+      faceAnalyzerRef.current.analyzeFace(results);
     },
-    [b],
+    [],
   );
 
   // Initialize facial landmark detection
@@ -54,21 +58,30 @@ function GameComponent() {
     faceLandmarker,
     isModelLoaded,
     isEnabled: detectionEnabled && cameraStatus === "success",
-    isDrawing,
+    debugMode,
     onResults: handleResults,
   });
 
+  // Toggle drawing of facial landmarks w/ d, cycle debug modes with b
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "d") {
-        setIsDrawing(!isDrawing);
+        const nextMode =
+          debugMode === "off"
+            ? "points"
+            : debugMode === "points"
+              ? "lines"
+              : debugMode === "lines"
+                ? "connectors"
+                : "off";
+        setDebugMode(nextMode);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isDrawing]);
+  }, [debugMode]);
 
   // Get webcam access
   useEffect(() => {
@@ -77,10 +90,12 @@ function GameComponent() {
     const setupWebcam = async () => {
       try {
         // Request access to webcam
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
-        });
+        const mediaStream = await navigator.mediaDevices.getUserMedia(
+          {
+            video: true,
+            audio: false,
+          },
+        );
         // Set video source with fallback for older browsers
         const video = videoElement as LegacyHTMLVideoElement;
 
@@ -102,7 +117,9 @@ function GameComponent() {
         if ("srcObject" in video) {
           video.srcObject = mediaStream;
         } else {
-          video.src = URL.createObjectURL(mediaStream as unknown as Blob);
+          video.src = URL.createObjectURL(
+            mediaStream as unknown as Blob,
+          );
         }
         console.log("Successfully set up webcam");
       } catch (error) {
@@ -157,7 +174,10 @@ function GameComponent() {
     }
 
     return () => {
-      videoElement.removeEventListener("loadedmetadata", resizeCanvas);
+      videoElement.removeEventListener(
+        "loadedmetadata",
+        resizeCanvas,
+      );
       videoElement.removeEventListener("canplay", resizeCanvas);
       window.removeEventListener("resize", resizeCanvas);
     };
