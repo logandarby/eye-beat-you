@@ -489,7 +489,7 @@ function GameComponent() {
               </Button>
             </div>
 
-            <div className="warning-notice scale-75 sm:scale-100 origin-bottom-left">
+            <div className="warning-notice sticker-shine scale-75 sm:scale-100 origin-bottom-left">
               <div className="warning-notice-inner">
                 <div className="warning-notice-title">WARNING:</div>
                 <div className="warning-notice-text">
@@ -499,7 +499,7 @@ function GameComponent() {
               </div>
             </div>
 
-            <div className="circle-sticker scale-75 sm:scale-100 origin-left -translate-x-8 sm:translate-x-6">
+            <div className="circle-sticker sticker-shine scale-75 sm:scale-100 origin-left -translate-x-8 sm:translate-x-6">
               <svg viewBox="0 0 120 120">
                 <defs>
                   <path
@@ -557,7 +557,7 @@ function GameComponent() {
             <img
               src="/eye-beat-you/star.svg"
               alt="Star sticker"
-              className="star-sticker scale-75 sm:scale-100 origin-bottom-right"
+              className="star-sticker sticker-shine scale-75 sm:scale-100 origin-bottom-right"
             />
           </>
         )}
