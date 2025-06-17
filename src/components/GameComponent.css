@@ -41,6 +41,50 @@
     margin-top: -0.25rem;
   }
 
+  /* Button controls container */
+  .button-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  /* Muted button styling */
+  .muted-button {
+    background-color: #dc2626 !important;
+    color: var(--color-brand-cream) !important;
+    border-color: #dc2626 !important;
+  }
+
+  .muted-button:hover {
+    background-color: #b91c1c !important;
+    border-color: #b91c1c !important;
+  }
+
+  /* Help dialog content styles */
+  .help-content {
+    font-family: var(--font-body);
+    color: var(--color-brand-dark);
+    line-height: 1.6;
+  }
+
+  .help-section {
+    margin-bottom: 1rem;
+    font-size: 14px;
+  }
+
+  .help-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .help-section strong {
+    color: var(--color-brand-orange-dark);
+    font-weight: 600;
+  }
+
   /* Warning notice tag styles */
   .warning-notice {
     position: absolute;

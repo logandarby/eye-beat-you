@@ -9,6 +9,16 @@ import {
   BLINK_AUDIO_FILE,
   MOUTH_OPEN_AUDIO_FILE,
 } from "@/lib/constants";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const CANVAS_PADDING_X = 80 * 2;
 const CANVAS_PADDING_Y = 80;
@@ -27,6 +37,8 @@ function GameComponent() {
   const [debugMode, setDebugMode] = useState<
     "off" | "points" | "lines" | "connectors"
   >("off");
+  const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef = useRef(false);
 
   // Initialize MediaPipe FaceLandmarker
   const {
@@ -35,12 +47,19 @@ function GameComponent() {
     error: modelError,
   } = useFaceLandmarker();
 
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
   // Callback to handle face events (on open or close)
   const handleFaceEvent = useCallback(
     (
       bodyPart: "leftEye" | "rightEye" | "mouth",
       event: "open" | "close",
     ) => {
+      // Don't play audio if help dialog is open
+      if (isMutedRef.current) return;
+
       if (bodyPart === "leftEye" || bodyPart === "rightEye") {
         if (event === "close") {
           const blinkAudio = new Audio(BLINK_AUDIO_FILE);
@@ -183,9 +202,9 @@ function GameComponent() {
         // videoElement.style.width = `${videoRect.width}px`;
         // videoElement.style.height = `${videoRect.height}px`;
 
-        console.log(
-          `Canvas resized to: ${canvasElement.width}x${canvasElement.height} (display: ${videoRect.width}x${videoRect.height})`,
-        );
+        // console.log(
+        //   `Canvas resized to: ${canvasElement.width}x${canvasElement.height} (display: ${videoRect.width}x${videoRect.height})`,
+        // );
       }
     };
 
@@ -269,11 +288,71 @@ function GameComponent() {
               <span className="cute-tag-gorgeous">Gorgeous!</span>
             </div>
 
+            <div className="button-controls">
+              <Dialog onOpenChange={setIsMuted}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <i className="far fa-question" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      Eye Beat You! - The Art of Making Faces
+                    </DialogTitle>
+                    <DialogDescription>
+                      A Comprehensive Guide to Looking Ridiculous on
+                      Camera
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="help-content">
+                    <p className="help-section">
+                      <strong>What is this?</strong> A completely
+                      over-engineered application to make delightfully
+                      obnoxious sounds in the most roundabout way
+                      possible.
+                    </p>
+                    <p className="help-section">
+                      <strong>How do I use it?</strong> Blink and open
+                      your mouth! Make funny faces! See what happens.
+                    </p>
+                    <p className="help-section">
+                      <strong>Pro Tip:</strong> Make sure your face is
+                      visible, well-lit, and not covered by your hair.
+                    </p>
+                    <p className="help-section">
+                      <strong>Who made this?</strong>{" "}
+                      <a
+                        className="underline"
+                        href="https://github.com/logandarby"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        I did.
+                      </a>
+                    </p>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className={isMuted ? "muted-button" : ""}
+                onClick={() => setIsMuted(!isMuted)}
+              >
+                <i
+                  className={`fas ${isMuted ? "fa-volume-xmark" : "fa-volume-high"}`}
+                />
+              </Button>
+            </div>
+
             <div className="warning-notice">
               <div className="warning-notice-inner">
                 <div className="warning-notice-title">WARNING:</div>
                 <div className="warning-notice-text">
-                  Objects in mirror are stupider than they appear.
+                  Objects in mirror are more handsome than they
+                  appear.
                 </div>
               </div>
             </div>
