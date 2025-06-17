@@ -145,20 +145,47 @@ export function useFacialLandmarkDetection({
           drawCalculationDebug(landmarks, canvasCtx);
         }
       } else if (debugMode === "connectors") {
-        // Normal mode: Draw landmarks for each detected face - only eyes and mouth
+        // Get video display properties from canvas dataset
+        const displayWidth = parseFloat(
+          canvasCtx.canvas.dataset.videoDisplayWidth ||
+            canvasCtx.canvas.width.toString(),
+        );
+        const displayHeight = parseFloat(
+          canvasCtx.canvas.dataset.videoDisplayHeight ||
+            canvasCtx.canvas.height.toString(),
+        );
+        const offsetX = parseFloat(
+          canvasCtx.canvas.dataset.videoOffsetX || "0",
+        );
+        const offsetY = parseFloat(
+          canvasCtx.canvas.dataset.videoOffsetY || "0",
+        );
+
+        // Transform landmarks for proper display with object-fit: cover
         for (const landmarks of results.faceLandmarks) {
+          const transformedLandmarks = landmarks.map((landmark) => ({
+            x:
+              (landmark.x * displayWidth + offsetX) /
+              canvasCtx.canvas.width,
+            y:
+              (landmark.y * displayHeight + offsetY) /
+              canvasCtx.canvas.height,
+            z: landmark.z,
+            visibility: landmark.visibility,
+          }));
+
           drawingUtils.drawConnectors(
-            landmarks,
+            transformedLandmarks,
             FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
             { color: "#FF3030" },
           );
           drawingUtils.drawConnectors(
-            landmarks,
+            transformedLandmarks,
             FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
             { color: "#30FF30" },
           );
           drawingUtils.drawConnectors(
-            landmarks,
+            transformedLandmarks,
             FaceLandmarker.FACE_LANDMARKS_LIPS,
             { color: "#E0E0E0" },
           );

@@ -270,23 +270,44 @@ function GameComponent() {
     if (!videoElement || !canvasElement) return;
 
     const resizeCanvas = () => {
-      // Use video's actual video dimensions, not the display size
-      // TODO: Fix this
       if (videoElement.videoWidth && videoElement.videoHeight) {
-        const videoRect = videoElement.getBoundingClientRect();
-        canvasElement.width = videoRect.width;
-        canvasElement.height = videoRect.height;
-        videoElement.width = videoRect.width;
-        videoElement.height = videoRect.height;
+        const containerRect = videoElement.getBoundingClientRect();
+        const { videoWidth, videoHeight } = videoElement;
 
-        // canvasElement.style.width = `${videoRect.width}px`;
-        // canvasElement.style.height = `${videoRect.height}px`;
-        // videoElement.style.width = `${videoRect.width}px`;
-        // videoElement.style.height = `${videoRect.height}px`;
+        // Calculate how the video fits within its container with object-fit: cover
+        const containerAspectRatio =
+          containerRect.width / containerRect.height;
+        const videoAspectRatio = videoWidth / videoHeight;
 
-        // console.log(
-        //   `Canvas resized to: ${canvasElement.width}x${canvasElement.height} (display: ${videoRect.width}x${videoRect.height})`,
-        // );
+        let displayWidth, displayHeight, offsetX, offsetY;
+
+        if (videoAspectRatio > containerAspectRatio) {
+          // Video is wider than container - fit to height, crop width
+          displayHeight = containerRect.height;
+          displayWidth =
+            (videoWidth * containerRect.height) / videoHeight;
+          offsetX = (displayWidth - containerRect.width) / 2;
+          offsetY = 0;
+        } else {
+          // Video is taller than container - fit to width, crop height
+          displayWidth = containerRect.width;
+          displayHeight =
+            (videoHeight * containerRect.width) / videoWidth;
+          offsetX = 0;
+          offsetY = (displayHeight - containerRect.height) / 2;
+        }
+
+        // Set canvas to match container size
+        canvasElement.width = containerRect.width;
+        canvasElement.height = containerRect.height;
+
+        // Store the video display properties for use in drawing operations
+        canvasElement.dataset.videoDisplayWidth =
+          displayWidth.toString();
+        canvasElement.dataset.videoDisplayHeight =
+          displayHeight.toString();
+        canvasElement.dataset.videoOffsetX = (-offsetX).toString();
+        canvasElement.dataset.videoOffsetY = (-offsetY).toString();
       }
     };
 

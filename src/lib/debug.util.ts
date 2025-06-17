@@ -23,8 +23,25 @@ export function drawDebugPointsOntoCanvas({
     const landmark = landmarks[landmarkIndex];
     if (!landmark) return;
 
-    const x = landmark.x * canvasCtx.canvas.width;
-    const y = landmark.y * canvasCtx.canvas.height;
+    // Get video display properties from canvas dataset
+    const displayWidth = parseFloat(
+      canvasCtx.canvas.dataset.videoDisplayWidth ||
+        canvasCtx.canvas.width.toString(),
+    );
+    const displayHeight = parseFloat(
+      canvasCtx.canvas.dataset.videoDisplayHeight ||
+        canvasCtx.canvas.height.toString(),
+    );
+    const offsetX = parseFloat(
+      canvasCtx.canvas.dataset.videoOffsetX || "0",
+    );
+    const offsetY = parseFloat(
+      canvasCtx.canvas.dataset.videoOffsetY || "0",
+    );
+
+    // Transform coordinates to match video display area
+    const x = landmark.x * displayWidth + offsetX;
+    const y = landmark.y * displayHeight + offsetY;
 
     // Draw larger circle for the point
     canvasCtx.beginPath();
@@ -63,11 +80,28 @@ export function drawCalculationLines({
   if (calculationType === "EAR" && landmarkIndices.length >= 6) {
     // EAR calculation lines
     // Get the 6 points: [left_corner, top_outer, top_inner, right_corner, bottom_inner, bottom_outer]
+
+    // Get video display properties from canvas dataset
+    const displayWidth = parseFloat(
+      canvasCtx.canvas.dataset.videoDisplayWidth ||
+        canvasCtx.canvas.width.toString(),
+    );
+    const displayHeight = parseFloat(
+      canvasCtx.canvas.dataset.videoDisplayHeight ||
+        canvasCtx.canvas.height.toString(),
+    );
+    const offsetX = parseFloat(
+      canvasCtx.canvas.dataset.videoOffsetX || "0",
+    );
+    const offsetY = parseFloat(
+      canvasCtx.canvas.dataset.videoOffsetY || "0",
+    );
+
     const points = landmarkIndices.map((index) => {
       const landmark = landmarks[index];
       return {
-        x: landmark.x * canvasCtx.canvas.width,
-        y: landmark.y * canvasCtx.canvas.height,
+        x: landmark.x * displayWidth + offsetX,
+        y: landmark.y * displayHeight + offsetY,
       };
     });
 
@@ -121,11 +155,28 @@ export function drawCalculationLines({
   ) {
     // MAR calculation lines
     // Get the 8 points: [left_corner, right_corner, top_outer, bottom_outer, top_middle, bottom_middle, bottom_inner, top_inner]
+
+    // Get video display properties from canvas dataset
+    const displayWidth = parseFloat(
+      canvasCtx.canvas.dataset.videoDisplayWidth ||
+        canvasCtx.canvas.width.toString(),
+    );
+    const displayHeight = parseFloat(
+      canvasCtx.canvas.dataset.videoDisplayHeight ||
+        canvasCtx.canvas.height.toString(),
+    );
+    const offsetX = parseFloat(
+      canvasCtx.canvas.dataset.videoOffsetX || "0",
+    );
+    const offsetY = parseFloat(
+      canvasCtx.canvas.dataset.videoOffsetY || "0",
+    );
+
     const points = landmarkIndices.map((index) => {
       const landmark = landmarks[index];
       return {
-        x: landmark.x * canvasCtx.canvas.width,
-        y: landmark.y * canvasCtx.canvas.height,
+        x: landmark.x * displayWidth + offsetX,
+        y: landmark.y * displayHeight + offsetY,
       };
     });
 
