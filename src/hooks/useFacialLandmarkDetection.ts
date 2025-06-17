@@ -8,7 +8,7 @@ import {
   LEFT_EYE_LANDMARKS,
   MOUTH_LANDMARKS,
   RIGHT_EYE_LANDMARKS,
-} from "@/lib/faceAnalyzer";
+} from "@/lib/constants";
 import {
   drawDebugPointsOntoCanvas,
   drawCalculationLines,

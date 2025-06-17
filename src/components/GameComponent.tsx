@@ -1,8 +1,14 @@
+import "./GameComponent.css";
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useFaceLandmarker } from "../hooks/useFaceLandmarker";
 import { useFacialLandmarkDetection } from "../hooks/useFacialLandmarkDetection";
 import { FaceAnalyzer } from "../lib/faceAnalyzer";
 import type { FaceLandmarkerResult } from "@mediapipe/tasks-vision";
+import {
+  BLINK_AUDIO_FILE,
+  MOUTH_OPEN_AUDIO_FILE,
+} from "@/lib/constants";
 
 const CANVAS_PADDING_PX = 80;
 
@@ -34,7 +40,19 @@ function GameComponent() {
       bodyPart: "leftEye" | "rightEye" | "mouth",
       event: "open" | "close",
     ) => {
-      console.log(`👁️ ${bodyPart} ${event}`);
+      if (bodyPart === "leftEye" || bodyPart === "rightEye") {
+        if (event === "close") {
+          const blinkAudio = new Audio(BLINK_AUDIO_FILE);
+          blinkAudio.volume = 0.35;
+          blinkAudio.play();
+        }
+      }
+      if (bodyPart === "mouth") {
+        if (event === "open") {
+          const mouthOpenAudio = new Audio(MOUTH_OPEN_AUDIO_FILE);
+          mouthOpenAudio.play();
+        }
+      }
     },
     [],
   );
@@ -214,45 +232,72 @@ function GameComponent() {
       className="bg-background min-h-screen texture-bg"
       style={{ padding: `${CANVAS_PADDING_PX}px` }}
     >
-      <div
-        className={`relative rounded-4xl border-4 border-brand-orange-dark shadow-2xl drop-shadow-2xl overflow-hidden ${
-          cameraStatus === "success" ? "block" : "hidden"
-        }`}
-        style={{
-          width: `calc(100vw - ${CANVAS_PADDING_PX * 2}px)`,
-          height: `calc(100vh - ${CANVAS_PADDING_PX * 2}px)`,
-        }}
-      >
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          className="w-full h-full bg-card object-cover backdrop-blur-sm"
-          style={{
-            transform: "scaleX(-1)",
-          }}
-        />
-
-        {/* Facial landmarks canvas overlay */}
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{
-            transform: "scaleX(-1)",
-            zIndex: 10,
-          }}
-        />
-
-        {/* Vignette overlay */}
+      <div className="relative overflow-visible">
+        {cameraStatus === "success" && (
+          <div className="cute-tag">
+            <div className="cute-tag-hello">
+              <svg viewBox="0 0 120 20">
+                <defs>
+                  <path
+                    id="curve"
+                    d={`M 10 25 Q 60 5 110 25`}
+                    fill="none"
+                  />
+                </defs>
+                <text>
+                  <textPath
+                    href="#curve"
+                    startOffset="50%"
+                    textAnchor="middle"
+                  >
+                    Hello
+                  </textPath>
+                </text>
+              </svg>
+            </div>
+            <span className="cute-tag-gorgeous">Gorgeous!</span>
+          </div>
+        )}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className={`relative rounded-4xl border-4 border-brand-orange-dark shadow-2xl drop-shadow-2xl overflow-hidden ${
+            cameraStatus === "success" ? "block" : "hidden"
+          }`}
           style={{
-            background:
-              "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0.6) 100%)",
-            zIndex: 5,
+            width: `calc(100vw - ${CANVAS_PADDING_PX * 2}px)`,
+            height: `calc(100vh - ${CANVAS_PADDING_PX * 2}px)`,
           }}
-        />
+        >
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full bg-card object-cover backdrop-blur-sm"
+            style={{
+              transform: "scaleX(-1)",
+            }}
+          />
+
+          {/* Facial landmarks canvas overlay */}
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{
+              transform: "scaleX(-1)",
+              zIndex: 10,
+            }}
+          />
+
+          {/* Vignette overlay */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.3) 70%, rgba(0,0,0,0.6) 100%)",
+              zIndex: 5,
+            }}
+          />
+        </div>
       </div>
 
       {/* Show fallback when camera is not ready */}
