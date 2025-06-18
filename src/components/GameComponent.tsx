@@ -78,7 +78,7 @@ function GameComponent() {
       bodyPart: "leftEye" | "rightEye" | "mouth",
       event: "open" | "close",
     ) => {
-      console.log("bodyPart", bodyPart, "\n", "event", event);
+      // console.log("bodyPart", bodyPart, "\n", "event", event);
 
       // Don't play audio if help dialog is open
       if (isMutedRef.current) return;
@@ -100,9 +100,12 @@ function GameComponent() {
     [],
   );
 
-  const faceAnalyzerRef = useRef<FaceAnalyzer>(
-    new FaceAnalyzer(handleFaceEvent),
-  );
+  const faceAnalyzerRef = useRef<FaceAnalyzer | null>(null);
+
+  // Initialize FaceAnalyzer only once
+  if (!faceAnalyzerRef.current) {
+    faceAnalyzerRef.current = new FaceAnalyzer(handleFaceEvent);
+  }
 
   // Callback to analyze face landmarks for blinks and mouth movements
   const handleResults = useCallback(
@@ -117,7 +120,7 @@ function GameComponent() {
           clearTimeout(faceDetectionTimeoutRef.current);
           faceDetectionTimeoutRef.current = null;
         }
-        faceAnalyzerRef.current.analyzeFace(results);
+        faceAnalyzerRef.current?.analyzeFace(results);
       } else {
         // Set a timeout to mark face as not detected after a brief delay
         // This prevents flickering when face detection temporarily fails

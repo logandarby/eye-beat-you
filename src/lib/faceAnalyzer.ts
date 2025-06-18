@@ -14,24 +14,25 @@ import {
 import { MedianFilter } from "./medianFilter";
 import { globalFaceDetectionTracker } from "./performance";
 
-interface OrificeState {
-  isOpen: boolean;
-  previouslyOpen: boolean;
+class OrificeState {
+  constructor(
+    public isOpen: boolean,
+    public previouslyOpen: boolean,
+  ) {}
+
+  get isClosing(): boolean {
+    return !this.isOpen && this.previouslyOpen;
+  }
+
+  get isOpening(): boolean {
+    return this.isOpen && !this.previouslyOpen;
+  }
 }
 
 export class FaceAnalyzer {
-  private leftEyeState: OrificeState = {
-    isOpen: true,
-    previouslyOpen: true,
-  };
-  private rightEyeState: OrificeState = {
-    isOpen: true,
-    previouslyOpen: true,
-  };
-  private mouthState: OrificeState = {
-    isOpen: false,
-    previouslyOpen: false,
-  };
+  private leftEyeState = new OrificeState(true, true);
+  private rightEyeState = new OrificeState(true, true);
+  private mouthState = new OrificeState(false, false);
 
   // Store current EAR values for external access
   private currentLeftEAR: number = 0;
@@ -81,12 +82,11 @@ export class FaceAnalyzer {
   }
 
   /**
-   * Calculate Eye Aspect Ratio (EAR) using the standard formula
-   * EAR = (|p2-p6| + |p3-p5|) / (2 * |p1-p4|)
+   * Calculate Eye Aspect Ratio (EAR) using only outer vertical distance
+   * EAR = |p2-p6| / |p1-p4|
    * Where:
    * p1, p4 = horizontal eye corners
    * p2, p6 = top and bottom outer vertical points
-   * p3, p5 = top and bottom inner vertical points
    */
   private calculateEAR(
     eyeLandmarks: Array<{ x: number; y: number; z?: number }>,
@@ -98,19 +98,16 @@ export class FaceAnalyzer {
     // Calculate distances between points
     const p1 = eyeLandmarks[0]; // Left corner
     const p2 = eyeLandmarks[1]; // Top outer
-    const p3 = eyeLandmarks[2]; // Top inner
     const p4 = eyeLandmarks[3]; // Right corner
-    const p5 = eyeLandmarks[4]; // Bottom inner
     const p6 = eyeLandmarks[5]; // Bottom outer
 
-    const vertical1 = this.distance(p2, p6);
-    const vertical2 = this.distance(p3, p5);
+    const outerVertical = this.distance(p2, p6);
     const horizontal = this.distance(p1, p4);
 
     if (horizontal === 0) return 0;
 
-    // EAR calculation using standard formula
-    return (vertical1 + vertical2) / (2.0 * horizontal);
+    // EAR calculation using only outer vertical distance
+    return outerVertical / horizontal;
   }
 
   private distance(
@@ -192,29 +189,26 @@ export class FaceAnalyzer {
     state.previouslyOpen = state.isOpen;
     state.isOpen = isCurrentlyOpen;
 
-    // For eyes, use velocity-based detection
+    // For eyes, use velocity-based detection for closing, but always detect opening
     if (orificeName === "leftEye" || orificeName === "rightEye") {
       const velocityMedian =
         orificeName === "leftEye"
           ? this.leftEARVelocity.getMedian()
           : this.rightEARVelocity.getMedian();
 
-      // Only trigger blink events if velocity is above threshold
+      // Closing: Only trigger if velocity is above threshold (to avoid false positives)
       if (
-        state.previouslyOpen &&
-        !state.isOpen &&
+        state.isClosing &&
         Math.abs(velocityMedian) > EAR_VELOCITY_THRESHOLD
       ) {
         this.onEvent(orificeName, "close");
-      } else if (
-        !state.previouslyOpen &&
-        state.isOpen &&
-        Math.abs(velocityMedian) > EAR_VELOCITY_THRESHOLD
-      ) {
+      }
+      // Opening: Always trigger (no velocity threshold needed)
+      else if (state.isOpening) {
         this.onEvent(orificeName, "open");
       }
     } else {
-      // For mouth, use velocity-based detection
+      // For mouth, use velocity-based detection for both directions
       const velocityMedian = this.mouthMARVelocity.getMedian();
 
       // Only trigger mouth events if velocity is above threshold
@@ -330,9 +324,9 @@ export class FaceAnalyzer {
    * Reset all states (useful for when detection restarts)
    */
   public reset(): void {
-    this.leftEyeState = { isOpen: true, previouslyOpen: true };
-    this.rightEyeState = { isOpen: true, previouslyOpen: true };
-    this.mouthState = { isOpen: false, previouslyOpen: false };
+    this.leftEyeState = new OrificeState(true, true);
+    this.rightEyeState = new OrificeState(true, true);
+    this.mouthState = new OrificeState(false, false);
 
     // Reset velocity tracking
     this.previousLeftEAR = null;
