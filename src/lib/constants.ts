@@ -7,7 +7,7 @@ export const BLINK_AUDIO_FILE = "/eye-beat-you/blink.mp3";
 export const MOUTH_OPEN_AUDIO_FILE = "/eye-beat-you/scream.mp3";
 
 // Thresholds for determining open/closed state
-export const EYE_ASPECT_RATIO_THRESHOLD = 0.15;
+export const EYE_ASPECT_RATIO_THRESHOLD = 0.2;
 export const MOUTH_ASPECT_RATIO_THRESHOLD = 0.4;
 
 // EAR velocity detection settings
@@ -19,7 +19,7 @@ export const MAR_VELOCITY_THRESHOLD = 0.05; // Minimum velocity to trigger mouth
 export const MAR_VELOCITY_WINDOW_SIZE = 1; // Window size for MAR velocity calculation
 
 // Median filter settings for smoothing EAR/MAR values
-export const MEDIAN_FILTER_WINDOW_SIZE = 3; // Window size for median filtering of ratios
+export const MEDIAN_FILTER_WINDOW_SIZE = 1; // Window size for median filtering of ratios
 
 // MediaPipe face landmark indices
 // These are the specific 6 points used for EAR calculation from each eye

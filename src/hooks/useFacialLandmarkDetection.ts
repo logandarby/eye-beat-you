@@ -13,6 +13,7 @@ import {
   drawDebugPointsOntoCanvas,
   drawCalculationLines,
 } from "@/lib/debug.util";
+import { globalFaceDetectionTracker } from "@/lib/performance";
 
 interface UseFacialLandmarkDetectionProps {
   videoElement: HTMLVideoElement | null;
@@ -213,25 +214,32 @@ export function useFacialLandmarkDetection({
       // Only process if video time has changed
       if (lastVideoTimeRef.current !== videoElement.currentTime) {
         lastVideoTimeRef.current = videoElement.currentTime;
+        globalFaceDetectionTracker.startFrame();
 
-        const startTimeMs = performance.now();
-        const results = await faceLandmarker.detectForVideo(
+        // Track detection stage
+        globalFaceDetectionTracker.startStage("detection");
+        const results = faceLandmarker.detectForVideo(
           videoElement,
-          startTimeMs,
+          performance.now(),
         );
+        globalFaceDetectionTracker.endStage("detection");
 
         if (results) {
-          // Call optional callback with results
+          // Call optional callback with results (this will handle analysis stage)
           if (onResults) {
             onResults(results);
           }
 
           // Only draw landmarks if drawing is enabled OR debug mode is enabled
           if (debugMode !== "off") {
+            // Track drawing stage
+            globalFaceDetectionTracker.startStage("drawing");
             const drawingUtils = new DrawingUtils(canvasCtx);
             drawLandmarks(results, canvasCtx, drawingUtils);
+            globalFaceDetectionTracker.endStage("drawing");
           }
         }
+        globalFaceDetectionTracker.endFrame();
       }
     } catch (error) {
       console.error("Error in face detection:", error);

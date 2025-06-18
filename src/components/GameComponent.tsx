@@ -3,6 +3,7 @@ import "./GameComponent.css";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useFaceLandmarker } from "../hooks/useFaceLandmarker";
 import { useFacialLandmarkDetection } from "../hooks/useFacialLandmarkDetection";
+import { useWebcam } from "../hooks/useWebcam";
 import { FaceAnalyzer } from "../lib/faceAnalyzer";
 import type { FaceLandmarkerResult } from "@mediapipe/tasks-vision";
 import {
@@ -20,18 +21,22 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  PerformanceViewer,
+  usePerformanceToggle,
+  useFaceDetectionPerformance,
+  createFaceDetectionMetrics,
+} from "@/lib/performance";
 import "@fortawesome/fontawesome-free/css/all.min.css";
-
-type LegacyHTMLVideoElement =
-  | Omit<HTMLVideoElement, "srcObject">
-  | Omit<HTMLVideoElement, "src">;
 
 function GameComponent() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [cameraStatus, setCameraStatus] = useState<
-    "loading" | "success" | "error"
-  >("loading");
+
+  // Initialize webcam access
+  const { cameraStatus, requestCameraAccess } = useWebcam({
+    videoRef,
+  });
   const detectionEnabled = true;
   const [debugMode, setDebugMode] = useState<
     "off" | "points" | "lines" | "connectors"
@@ -43,6 +48,18 @@ function GameComponent() {
   const [cameraReadyDelayPassed, setCameraReadyDelayPassed] =
     useState(false);
   const cameraReadyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Performance tracking
+  const isPerformanceVisible = usePerformanceToggle();
+  const { metrics: faceDetectionMetrics } =
+    useFaceDetectionPerformance({
+      enabled: isPerformanceVisible && cameraStatus === "success",
+    });
+
+  // Convert face detection metrics to generic MetricsGroup format
+  const performanceMetricsGroups = [
+    createFaceDetectionMetrics(faceDetectionMetrics),
+  ];
 
   // Initialize MediaPipe FaceLandmarker
   const {
@@ -61,6 +78,8 @@ function GameComponent() {
       bodyPart: "leftEye" | "rightEye" | "mouth",
       event: "open" | "close",
     ) => {
+      console.log("bodyPart", bodyPart, "\n", "event", event);
+
       // Don't play audio if help dialog is open
       if (isMutedRef.current) return;
 
@@ -144,123 +163,6 @@ function GameComponent() {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [debugMode]);
-
-  // Function to request webcam access
-  const requestCameraAccess = useCallback(async () => {
-    const videoElement = videoRef.current;
-    if (!videoElement) return;
-
-    try {
-      // Request access to webcam with mobile-optimized constraints
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user", // Prefer front-facing camera
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 },
-        },
-        audio: false,
-      });
-      setCameraStatus("loading");
-
-      // Set video source with fallback for older browsers
-      const video = videoElement as LegacyHTMLVideoElement;
-
-      // Set up event listeners before setting source
-      const handleCanPlay = () => {
-        setCameraStatus("success");
-        videoElement.removeEventListener("canplay", handleCanPlay);
-      };
-
-      const handleError = () => {
-        console.error("Video playback error");
-        setCameraStatus("error");
-        videoElement.removeEventListener("error", handleError);
-      };
-
-      videoElement.addEventListener("canplay", handleCanPlay);
-      videoElement.addEventListener("error", handleError);
-
-      if ("srcObject" in video) {
-        video.srcObject = mediaStream;
-      } else {
-        video.src = URL.createObjectURL(
-          mediaStream as unknown as Blob,
-        );
-      }
-      console.log("Successfully set up webcam");
-    } catch (error) {
-      console.error(
-        "Error accessing webcam with specific constraints:",
-        error,
-      );
-
-      // Fallback: Try with simpler constraints
-      try {
-        console.log("Trying fallback camera constraints...");
-        const fallbackStream =
-          await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" },
-            audio: false,
-          });
-
-        const video = videoElement as LegacyHTMLVideoElement;
-
-        // Set up event listeners
-        const handleCanPlay = () => {
-          setCameraStatus("success");
-          videoElement.removeEventListener("canplay", handleCanPlay);
-        };
-
-        const handleError = () => {
-          console.error("Video playback error");
-          setCameraStatus("error");
-          videoElement.removeEventListener("error", handleError);
-        };
-
-        videoElement.addEventListener("canplay", handleCanPlay);
-        videoElement.addEventListener("error", handleError);
-
-        if ("srcObject" in video) {
-          video.srcObject = fallbackStream;
-        } else {
-          video.src = URL.createObjectURL(
-            fallbackStream as unknown as Blob,
-          );
-        }
-        console.log(
-          "Successfully set up webcam with fallback constraints",
-        );
-      } catch (fallbackError) {
-        console.error(
-          "Error accessing webcam with fallback constraints:",
-          fallbackError,
-        );
-        setCameraStatus("error");
-      }
-    }
-  }, []);
-
-  // Get webcam access
-  useEffect(() => {
-    const videoElement = videoRef.current;
-    requestCameraAccess();
-
-    // Cleanup function using captured video element
-    return () => {
-      if (!videoElement) return;
-
-      const video = videoElement as unknown as LegacyHTMLVideoElement;
-
-      if ("srcObject" in video && video.srcObject) {
-        const stream = video.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-      } else if ("src" in video && video.src) {
-        // Clean up object URL for older browsers
-        URL.revokeObjectURL(video.src);
-      }
-    };
-  }, [requestCameraAccess]);
 
   // Resize canvas to match video dimensions
   useEffect(() => {
@@ -634,6 +536,12 @@ function GameComponent() {
 
       {/* Show fallback when camera is not ready */}
       {cameraStatus !== "success" && <CameraFallback />}
+
+      {/* Performance metrics overlay */}
+      <PerformanceViewer
+        metricsGroups={performanceMetricsGroups}
+        isVisible={isPerformanceVisible && cameraStatus === "success"}
+      />
 
       {/* Footer */}
       <footer className="footer-credits">

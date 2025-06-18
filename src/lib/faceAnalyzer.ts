@@ -12,6 +12,7 @@ import {
   MEDIAN_FILTER_WINDOW_SIZE,
 } from "./constants";
 import { MedianFilter } from "./medianFilter";
+import { globalFaceDetectionTracker } from "./performance";
 
 interface OrificeState {
   isOpen: boolean;
@@ -237,10 +238,14 @@ export class FaceAnalyzer {
    * Analyze face landmarks and detect blinks/mouth movements
    */
   public analyzeFace(results: FaceLandmarkerResult): void {
+    // Start tracking analysis stage
+    globalFaceDetectionTracker.startStage("analysis");
+
     if (
       !results.faceLandmarks ||
       results.faceLandmarks.length === 0
     ) {
+      globalFaceDetectionTracker.endStage("analysis");
       return;
     }
 
@@ -316,6 +321,9 @@ export class FaceAnalyzer {
       "rightEye",
     );
     this.updateOrificeState(this.mouthState, mouthOpen, "mouth");
+
+    // End tracking analysis stage
+    globalFaceDetectionTracker.endStage("analysis");
   }
 
   /**
