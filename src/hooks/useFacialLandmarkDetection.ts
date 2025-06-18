@@ -175,22 +175,51 @@ export function useFacialLandmarkDetection({
             visibility: landmark.visibility,
           }));
 
+          // First, draw the entire face mesh in grey
+          drawingUtils.drawConnectors(
+            transformedLandmarks,
+            FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+            { color: "#808080", lineWidth: 1 },
+          );
+
+          // Then draw the specific features on top in different colors
           drawingUtils.drawConnectors(
             transformedLandmarks,
             FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
-            { color: "#FF3030" },
+            { color: "#FF3030", lineWidth: 2 },
           );
           drawingUtils.drawConnectors(
             transformedLandmarks,
             FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
-            { color: "#30FF30" },
+            { color: "#30FF30", lineWidth: 2 },
           );
           drawingUtils.drawConnectors(
             transformedLandmarks,
             FaceLandmarker.FACE_LANDMARKS_LIPS,
-            { color: "#E0E0E0" },
+            { color: "#3030FF", lineWidth: 2 },
+          );
+
+          // Optional: Also draw eyebrows for better visibility
+          drawingUtils.drawConnectors(
+            transformedLandmarks,
+            FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW,
+            { color: "#FFFF30", lineWidth: 2 },
+          );
+          drawingUtils.drawConnectors(
+            transformedLandmarks,
+            FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW,
+            { color: "#FFFF30", lineWidth: 2 },
           );
         }
+
+        // Draw title
+        canvasCtx.font = "bold 20px Arial";
+        canvasCtx.fillStyle = "#FFFFFF";
+        canvasCtx.strokeStyle = "#000000";
+        canvasCtx.lineWidth = 3;
+        const titleText = "FULL FACE MESH (Press B to cycle modes)";
+        canvasCtx.strokeText(titleText, 20, 40);
+        canvasCtx.fillText(titleText, 20, 40);
       }
     },
     [debugMode, drawDebugPoints, drawCalculationDebug],

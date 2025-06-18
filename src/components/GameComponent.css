@@ -386,6 +386,22 @@
     transition: transform 0.2s ease-out;
   }
 
+  /* Blink star animation */
+  .blink-star {
+    animation: blink-star-animation 0.8s ease-out;
+  }
+
+  @keyframes blink-star-animation {
+    0% {
+      transform: scale(1) translateY(0px) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0.7) translateY(-40px) rotate(360deg);
+      opacity: 0;
+    }
+  }
+
   /* Footer credits */
   .footer-credits {
     position: fixed;

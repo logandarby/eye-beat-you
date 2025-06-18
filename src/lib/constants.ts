@@ -3,8 +3,8 @@ export const CAMERA_READY_DELAY = 300;
 export const FACE_DETECTION_DELAY = 1000;
 
 // Audio files to play
-export const BLINK_AUDIO_FILE = "/eye-beat-you/blink.mp3";
-export const MOUTH_OPEN_AUDIO_FILE = "/eye-beat-you/scream.mp3";
+export const BLINK_AUDIO = new Audio("/eye-beat-you/blink.mp3");
+export const MOUTH_OPEN_AUDIO = new Audio("/eye-beat-you/scream.mp3");
 
 // Thresholds for determining open/closed state
 export const EYE_ASPECT_RATIO_THRESHOLD = 0.2;

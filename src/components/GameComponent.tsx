@@ -7,10 +7,10 @@ import { useWebcam } from "../hooks/useWebcam";
 import { FaceAnalyzer } from "../lib/faceAnalyzer";
 import type { FaceLandmarkerResult } from "@mediapipe/tasks-vision";
 import {
-  BLINK_AUDIO_FILE,
+  BLINK_AUDIO,
   CAMERA_READY_DELAY,
   FACE_DETECTION_DELAY,
-  MOUTH_OPEN_AUDIO_FILE,
+  MOUTH_OPEN_AUDIO,
 } from "@/lib/constants";
 import {
   Dialog,
@@ -28,6 +28,14 @@ import {
   createFaceDetectionMetrics,
 } from "@/lib/performance";
 import "@fortawesome/fontawesome-free/css/all.min.css";
+
+// Star animation interface
+interface AnimatedStar {
+  id: string;
+  x: number;
+  y: number;
+  createdAt: number;
+}
 
 function GameComponent() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,6 +56,18 @@ function GameComponent() {
   const [cameraReadyDelayPassed, setCameraReadyDelayPassed] =
     useState(false);
   const cameraReadyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Star animation state
+  const [animatedStars, setAnimatedStars] = useState<AnimatedStar[]>(
+    [],
+  );
+  const eyeCornerPositionsRef = useRef<{
+    leftEyeOuter: { x: number; y: number } | null;
+    rightEyeOuter: { x: number; y: number } | null;
+  }>({
+    leftEyeOuter: null,
+    rightEyeOuter: null,
+  });
 
   // Performance tracking
   const isPerformanceVisible = usePerformanceToggle();
@@ -72,6 +92,74 @@ function GameComponent() {
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
+  // Function to spawn a star at a specific position
+  const spawnStar = useCallback((x: number, y: number) => {
+    const starId = `star-${Date.now()}-${Math.random()}`;
+    const newStar: AnimatedStar = {
+      id: starId,
+      x,
+      y,
+      createdAt: Date.now(),
+    };
+
+    setAnimatedStars((prev) => [...prev, newStar]);
+
+    // Remove star after animation completes (0.8 seconds)
+    setTimeout(() => {
+      setAnimatedStars((prev) =>
+        prev.filter((star) => star.id !== starId),
+      );
+    }, 800);
+  }, []);
+
+  // Function to convert landmark position to screen coordinates
+  const landmarkToScreenCoords = useCallback(
+    (landmarkX: number, landmarkY: number) => {
+      const videoElement = videoRef.current;
+      if (!videoElement) return null;
+
+      const containerRect = videoElement.getBoundingClientRect();
+      const { videoWidth, videoHeight } = videoElement;
+
+      if (!videoWidth || !videoHeight) return null;
+
+      // Calculate how the video fits within its container with object-fit: cover
+      const containerAspectRatio =
+        containerRect.width / containerRect.height;
+      const videoAspectRatio = videoWidth / videoHeight;
+
+      let displayWidth, displayHeight, offsetX, offsetY;
+
+      if (videoAspectRatio > containerAspectRatio) {
+        // Video is wider than container - fit to height, crop width
+        displayHeight = containerRect.height;
+        displayWidth =
+          (videoWidth * containerRect.height) / videoHeight;
+        offsetX = (displayWidth - containerRect.width) / 2;
+        offsetY = 0;
+      } else {
+        // Video is taller than container - fit to width, crop height
+        displayWidth = containerRect.width;
+        displayHeight =
+          (videoHeight * containerRect.width) / videoWidth;
+        offsetX = 0;
+        offsetY = (displayHeight - containerRect.height) / 2;
+      }
+
+      // Convert landmark coordinates to screen coordinates
+      // Note: landmarks are mirrored due to scaleX(-1) transform
+      const screenX =
+        containerRect.left +
+        containerRect.width -
+        (landmarkX * displayWidth - offsetX);
+      const screenY =
+        containerRect.top + (landmarkY * displayHeight - offsetY);
+
+      return { x: screenX, y: screenY };
+    },
+    [],
+  );
+
   // Callback to handle face events (on open or close)
   const handleFaceEvent = useCallback(
     (
@@ -85,19 +173,36 @@ function GameComponent() {
 
       if (bodyPart === "leftEye" || bodyPart === "rightEye") {
         if (event === "close") {
-          const blinkAudio = new Audio(BLINK_AUDIO_FILE);
-          blinkAudio.volume = 0.35;
-          blinkAudio.play();
+          BLINK_AUDIO.currentTime = 0;
+          BLINK_AUDIO.volume = 0.35;
+          BLINK_AUDIO.play();
+
+          // Spawn star at eye corner
+          const eyePosition =
+            bodyPart === "leftEye"
+              ? eyeCornerPositionsRef.current.leftEyeOuter
+              : eyeCornerPositionsRef.current.rightEyeOuter;
+
+          if (eyePosition) {
+            const screenPos = landmarkToScreenCoords(
+              eyePosition.x,
+              eyePosition.y,
+            );
+            if (screenPos) {
+              spawnStar(screenPos.x, screenPos.y);
+            }
+          }
         }
       }
       if (bodyPart === "mouth") {
         if (event === "open") {
-          const mouthOpenAudio = new Audio(MOUTH_OPEN_AUDIO_FILE);
-          mouthOpenAudio.play();
+          MOUTH_OPEN_AUDIO.currentTime = 0;
+          MOUTH_OPEN_AUDIO.volume = 0.35;
+          MOUTH_OPEN_AUDIO.play();
         }
       }
     },
-    [],
+    [landmarkToScreenCoords, spawnStar],
   );
 
   const faceAnalyzerRef = useRef<FaceAnalyzer | null>(null);
@@ -120,6 +225,33 @@ function GameComponent() {
           clearTimeout(faceDetectionTimeoutRef.current);
           faceDetectionTimeoutRef.current = null;
         }
+
+        // Update eye center positions for star spawning (midpoint between inner and outer corners)
+        const landmarks = results.faceLandmarks[0];
+
+        // Calculate center point between inner and outer corners for each eye
+        const leftEyeInner = landmarks[263]; // Inner corner (towards nose)
+        const leftEyeOuter = landmarks[362]; // Outer corner (towards ear)
+        const rightEyeInner = landmarks[33]; // Inner corner (towards nose)
+        const rightEyeOuter = landmarks[133]; // Outer corner (towards ear)
+
+        eyeCornerPositionsRef.current = {
+          leftEyeOuter:
+            leftEyeInner && leftEyeOuter
+              ? {
+                  x: (leftEyeInner.x + leftEyeOuter.x) / 2,
+                  y: (leftEyeInner.y + leftEyeOuter.y) / 2,
+                }
+              : null,
+          rightEyeOuter:
+            rightEyeInner && rightEyeOuter
+              ? {
+                  x: (rightEyeInner.x + rightEyeOuter.x) / 2,
+                  y: (rightEyeInner.y + rightEyeOuter.y) / 2,
+                }
+              : null,
+        };
+
         faceAnalyzerRef.current?.analyzeFace(results);
       } else {
         // Set a timeout to mark face as not detected after a brief delay
@@ -384,7 +516,8 @@ function GameComponent() {
                     </p>
                     <p className="help-section">
                       <strong>Pro Tip:</strong> Make sure your face is
-                      visible, well-lit, and not covered by your hair.
+                      visible, well-lit, and not covered by your hair
+                      or glasses.
                     </p>
                     <p className="help-section">
                       <strong>Who made this?</strong>{" "}
@@ -536,6 +669,31 @@ function GameComponent() {
           />
         </div>
       </div>
+
+      {/* Animated stars overlay - positioned relative to viewport */}
+      {animatedStars.map((star) => (
+        <div
+          key={star.id}
+          className="blink-star"
+          style={{
+            position: "fixed",
+            left: star.x - 10, // Center the 20px star
+            top: star.y - 10,
+            width: "20px",
+            height: "20px",
+            pointerEvents: "none",
+            zIndex: 1000,
+            transformOrigin: "center",
+          }}
+        >
+          <img
+            src="/eye-beat-you/star.svg"
+            alt="Blink star"
+            width="20"
+            height="20"
+          />
+        </div>
+      ))}
 
       {/* Show fallback when camera is not ready */}
       {cameraStatus !== "success" && <CameraFallback />}
