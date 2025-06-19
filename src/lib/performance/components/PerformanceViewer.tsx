@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, CardContent } from "../../../components/ui/card";
+import { Card, CardContent } from "../../ui/components/card";
 import type { EventPerformanceMetrics } from "../types/eventMetrics";
 
 export interface MetricConfig {

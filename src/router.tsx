@@ -5,7 +5,7 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 import GameComponent from "./components/GameComponent";
-import ThemeDemo from "./components/ThemeDemo";
+import ThemeDemo from "./components/ThemeDemo/ThemeDemo";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,

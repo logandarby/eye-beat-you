@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Button } from "./ui/button";
+import { Button } from "../../lib/ui/components/button";
 import {
   Card,
   CardHeader,
@@ -8,7 +8,7 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "./ui/card";
+} from "../../lib/ui/components/card";
 import {
   Dialog,
   DialogTrigger,
@@ -17,13 +17,15 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "./ui/dialog";
-import { Checkbox } from "./ui/checkbox";
+} from "../../lib/ui/components/dialog";
+import { Checkbox } from "../../lib/ui/components/checkbox";
 
 function ThemeDemo() {
   const [isChecked, setIsChecked] = useState(false);
 
-  const handleCheckboxChange = (checked: boolean | "indeterminate") => {
+  const handleCheckboxChange = (
+    checked: boolean | "indeterminate",
+  ) => {
     setIsChecked(checked === true);
   };
 
@@ -91,10 +93,18 @@ function ThemeDemo() {
                 <Button variant="secondary" animation="pulse">
                   Pulse Button
                 </Button>
-                <Button variant="secondary" animation="pulse" size="sm">
+                <Button
+                  variant="secondary"
+                  animation="pulse"
+                  size="sm"
+                >
                   Small Pulse
                 </Button>
-                <Button variant="secondary" animation="pulse" size="lg">
+                <Button
+                  variant="secondary"
+                  animation="pulse"
+                  size="lg"
+                >
                   Large Pulse
                 </Button>
               </div>
@@ -117,7 +127,11 @@ function ThemeDemo() {
                 <h3 className="font-semibold text-brand-orange-dark">
                   Icon Button
                 </h3>
-                <Button variant="default" size="icon" animation="bounce">
+                <Button
+                  variant="default"
+                  size="icon"
+                  animation="bounce"
+                >
                   🎯
                 </Button>
               </div>
@@ -141,8 +155,8 @@ function ThemeDemo() {
             <CardHeader>
               <CardTitle>Textured Card</CardTitle>
               <CardDescription>
-                This card has a texture background with semi-transparent
-                overlay
+                This card has a texture background with
+                semi-transparent overlay
               </CardDescription>
             </CardHeader>
             <CardContent></CardContent>
@@ -175,7 +189,11 @@ function ThemeDemo() {
                 </label>
               </div>
               <div className="space-y-2">
-                <Button variant="secondary" size="sm" className="w-full">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                >
                   Secondary Action
                 </Button>
                 <Button variant="ghost" size="sm" className="w-full">
@@ -224,7 +242,8 @@ function ThemeDemo() {
           <CardHeader>
             <CardTitle>Dialog Components</CardTitle>
             <CardDescription>
-              Modals and dialogs with texture backgrounds and animations
+              Modals and dialogs with texture backgrounds and
+              animations
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -239,16 +258,16 @@ function ThemeDemo() {
                   <DialogHeader>
                     <DialogTitle>Themed Dialog</DialogTitle>
                     <DialogDescription>
-                      This dialog showcases the textured background with
-                      our brand colors. Notice how the close button has a
-                      fun hover animation!
+                      This dialog showcases the textured background
+                      with our brand colors. Notice how the close
+                      button has a fun hover animation!
                     </DialogDescription>
                   </DialogHeader>
                   <div className="py-4">
                     <p className="text-brand-dark/80">
-                      The dialog content is perfectly readable against the
-                      textured background thanks to the semi-transparent
-                      overlay.
+                      The dialog content is perfectly readable against
+                      the textured background thanks to the
+                      semi-transparent overlay.
                     </p>
                     <div className="mt-4 space-y-3">
                       <div className="flex items-center space-x-2">
@@ -325,19 +344,28 @@ function ThemeDemo() {
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">
                   <Checkbox id="option1" />
-                  <label htmlFor="option1" className="text-sm font-medium">
+                  <label
+                    htmlFor="option1"
+                    className="text-sm font-medium"
+                  >
                     Enable notifications
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox id="option2" defaultChecked />
-                  <label htmlFor="option2" className="text-sm font-medium">
+                  <label
+                    htmlFor="option2"
+                    className="text-sm font-medium"
+                  >
                     Auto-save enabled (checked by default)
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox id="option3" />
-                  <label htmlFor="option3" className="text-sm font-medium">
+                  <label
+                    htmlFor="option3"
+                    className="text-sm font-medium"
+                  >
                     Dark mode preference
                   </label>
                 </div>
@@ -345,13 +373,19 @@ function ThemeDemo() {
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">
                   <Checkbox id="option4" />
-                  <label htmlFor="option4" className="text-sm font-medium">
+                  <label
+                    htmlFor="option4"
+                    className="text-sm font-medium"
+                  >
                     Marketing emails
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox id="option5" />
-                  <label htmlFor="option5" className="text-sm font-medium">
+                  <label
+                    htmlFor="option5"
+                    className="text-sm font-medium"
+                  >
                     Product updates
                   </label>
                 </div>
@@ -372,8 +406,8 @@ function ThemeDemo() {
         {/* Footer */}
         <div className="text-center py-8">
           <p className="text-brand-dark/60">
-            🎨 Custom theme with texture backgrounds, pill buttons, and fun
-            animations!
+            🎨 Custom theme with texture backgrounds, pill buttons,
+            and fun animations!
           </p>
         </div>
       </div>

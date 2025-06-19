@@ -8,11 +8,11 @@ import {
   LEFT_EYE_LANDMARKS,
   MOUTH_LANDMARKS,
   RIGHT_EYE_LANDMARKS,
-} from "@/lib/constants";
+} from "@/core/constants";
 import {
   drawDebugPointsOntoCanvas,
   drawCalculationLines,
-} from "@/lib/debug.util";
+} from "@/utils/debug";
 import { globalFaceDetectionTracker } from "@/lib/performance";
 
 interface UseFacialLandmarkDetectionProps {

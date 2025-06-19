@@ -1,18 +1,19 @@
 import "./GameComponent.css";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useFaceLandmarker } from "../hooks/useFaceLandmarker";
-import { useFacialLandmarkDetection } from "../hooks/useFacialLandmarkDetection";
-import { useWebcam } from "../hooks/useWebcam";
-import { FaceAnalyzer } from "../lib/faceAnalyzer";
+import {
+  useFaceLandmarker,
+  useFacialLandmarkDetection,
+  FaceAnalyzer,
+} from "@/lib/face-detection";
 import type { FaceLandmarkerResult } from "@mediapipe/tasks-vision";
 import {
   BLINK_AUDIO,
   CAMERA_READY_DELAY,
   FACE_DETECTION_DELAY,
   MOUTH_OPEN_AUDIO,
-} from "@/lib/constants";
-import { Button } from "@/components/ui/button";
+} from "@/core/constants";
+import { Button } from "@/lib/ui/components/button";
 import {
   PerformanceViewer,
   usePerformanceToggle,
@@ -24,6 +25,8 @@ import AnimationOverlay from "./AnimationOverlay/AnimationOverlay";
 import FunnyStickers from "./FunnyStickers/FunnyStickers";
 import SideBar from "./SideBar/SideBar";
 import useAnimationOverlay from "@/hooks/useAnimationOverlay";
+import { useWebcam } from "@/hooks/useWebcam";
+import { calculateObjectCoverDisplayProperties } from "@/utils/object-cover";
 
 function GameComponent() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -191,30 +194,8 @@ function GameComponent() {
     const resizeCanvas = () => {
       if (videoElement.videoWidth && videoElement.videoHeight) {
         const containerRect = videoElement.getBoundingClientRect();
-        const { videoWidth, videoHeight } = videoElement;
-
-        // Calculate how the video fits within its container with object-fit: cover
-        const containerAspectRatio =
-          containerRect.width / containerRect.height;
-        const videoAspectRatio = videoWidth / videoHeight;
-
-        let displayWidth, displayHeight, offsetX, offsetY;
-
-        if (videoAspectRatio > containerAspectRatio) {
-          // Video is wider than container - fit to height, crop width
-          displayHeight = containerRect.height;
-          displayWidth =
-            (videoWidth * containerRect.height) / videoHeight;
-          offsetX = (displayWidth - containerRect.width) / 2;
-          offsetY = 0;
-        } else {
-          // Video is taller than container - fit to width, crop height
-          displayWidth = containerRect.width;
-          displayHeight =
-            (videoHeight * containerRect.width) / videoWidth;
-          offsetX = 0;
-          offsetY = (displayHeight - containerRect.height) / 2;
-        }
+        const { displayWidth, displayHeight, offsetX, offsetY } =
+          calculateObjectCoverDisplayProperties(videoElement);
 
         // Set canvas to match container size
         canvasElement.width = containerRect.width;

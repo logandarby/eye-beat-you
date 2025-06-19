@@ -1,4 +1,4 @@
-import { Button } from "../ui/button";
+import { Button } from "../../lib/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../ui/dialog";
+} from "../../lib/ui/components/dialog";
 import "./SideBar.css";
 
 interface SideBarProps {

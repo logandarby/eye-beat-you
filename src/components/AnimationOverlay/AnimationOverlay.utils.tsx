@@ -5,7 +5,8 @@ import {
   FOREHEAD_TOP,
   LEFT_EYE_INNER_CORNER,
   RIGHT_EYE_INNER_CORNER,
-} from "@/lib/constants";
+} from "@/core/constants";
+import { calculateObjectCoverDisplayProperties } from "@/utils/object-cover";
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 
 // Star animation interface
@@ -43,30 +44,8 @@ export function landmarkToScreenCoords(
   if (!videoElement) return null;
 
   const containerRect = videoElement.getBoundingClientRect();
-  const { videoWidth, videoHeight } = videoElement;
-
-  if (!videoWidth || !videoHeight) return null;
-
-  // Calculate how the video fits within its container with object-fit: cover
-  const containerAspectRatio =
-    containerRect.width / containerRect.height;
-  const videoAspectRatio = videoWidth / videoHeight;
-
-  let displayWidth, displayHeight, offsetX, offsetY;
-
-  if (videoAspectRatio > containerAspectRatio) {
-    // Video is wider than container - fit to height, crop width
-    displayHeight = containerRect.height;
-    displayWidth = (videoWidth * containerRect.height) / videoHeight;
-    offsetX = (displayWidth - containerRect.width) / 2;
-    offsetY = 0;
-  } else {
-    // Video is taller than container - fit to width, crop height
-    displayWidth = containerRect.width;
-    displayHeight = (videoHeight * containerRect.width) / videoWidth;
-    offsetX = 0;
-    offsetY = (displayHeight - containerRect.height) / 2;
-  }
+  const { displayWidth, displayHeight, offsetX, offsetY } =
+    calculateObjectCoverDisplayProperties(videoElement);
 
   // Convert landmark coordinates to screen coordinates
   // Note: landmarks are mirrored due to scaleX(-1) transform

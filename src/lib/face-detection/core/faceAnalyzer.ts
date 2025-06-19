@@ -10,9 +10,9 @@ import {
   MAR_VELOCITY_THRESHOLD,
   MAR_VELOCITY_WINDOW_SIZE,
   MEDIAN_FILTER_WINDOW_SIZE,
-} from "./constants";
-import { MedianFilter } from "./medianFilter";
-import { globalFaceDetectionTracker } from "./performance";
+} from "@/core/constants";
+import { MedianFilter } from "../utils/medianFilter";
+import { globalFaceDetectionTracker } from "@/lib/performance";
 
 class OrificeState {
   constructor(
