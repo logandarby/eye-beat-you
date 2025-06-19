@@ -65,3 +65,7 @@ export const LEFT_EYE_RADIAL_POINTS = [384, 386, 388]; // Top of right eye (3 po
 // Face orientation landmarks for calculating vertical direction (roll)
 export const CHIN_CENTER = 19;
 export const FOREHEAD_TOP = 10;
+
+// Star spawn points (inner eye corners)
+export const LEFT_EYE_INNER_CORNER = 263;
+export const RIGHT_EYE_INNER_CORNER = 33;
