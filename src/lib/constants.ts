@@ -53,3 +53,15 @@ export const MOUTH_LANDMARKS = [
   312, // Bottom inner
   317, // Top inner
 ];
+
+// Eye center landmarks (pupil centers) for radial line angle calculation
+export const RIGHT_EYE_CENTER = 468;
+export const LEFT_EYE_CENTER = 473;
+
+// Eye top landmarks for radial line spawn points
+export const RIGHT_EYE_RADIAL_POINTS = [161, 159, 157]; // Top of left eye (3 points)
+export const LEFT_EYE_RADIAL_POINTS = [384, 386, 388]; // Top of right eye (3 points)
+
+// Face orientation landmarks for calculating vertical direction (roll)
+export const CHIN_CENTER = 19;
+export const FOREHEAD_TOP = 10;

@@ -11,6 +11,10 @@ import {
   CAMERA_READY_DELAY,
   FACE_DETECTION_DELAY,
   MOUTH_OPEN_AUDIO,
+  LEFT_EYE_RADIAL_POINTS,
+  RIGHT_EYE_RADIAL_POINTS,
+  CHIN_CENTER,
+  FOREHEAD_TOP,
 } from "@/lib/constants";
 import {
   Dialog,
@@ -29,11 +33,17 @@ import {
 } from "@/lib/performance";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
-// Star animation interface
-interface AnimatedStar {
+const BLINK_LINE_HEIGHT = 15;
+const BLINK_LINE_WIDTH = 2;
+const BLINK_ANGLE_OFFSET = 15;
+const BLINK_LINE_DURATION_MS = 300;
+
+// Radial line animation interface
+interface AnimatedLine {
   id: string;
   x: number;
   y: number;
+  angle: number; // angle in degrees pointing outward from eye center
   createdAt: number;
 }
 
@@ -57,16 +67,16 @@ function GameComponent() {
     useState(false);
   const cameraReadyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Star animation state
-  const [animatedStars, setAnimatedStars] = useState<AnimatedStar[]>(
+  // Radial line animation state
+  const [animatedLines, setAnimatedLines] = useState<AnimatedLine[]>(
     [],
   );
-  const eyeCornerPositionsRef = useRef<{
-    leftEyeOuter: { x: number; y: number } | null;
-    rightEyeOuter: { x: number; y: number } | null;
+  const eyeLandmarksRef = useRef<{
+    leftEyeLines: Array<{ x: number; y: number; angle: number }>;
+    rightEyeLines: Array<{ x: number; y: number; angle: number }>;
   }>({
-    leftEyeOuter: null,
-    rightEyeOuter: null,
+    leftEyeLines: [],
+    rightEyeLines: [],
   });
 
   // Performance tracking
@@ -91,26 +101,6 @@ function GameComponent() {
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
-
-  // Function to spawn a star at a specific position
-  const spawnStar = useCallback((x: number, y: number) => {
-    const starId = `star-${Date.now()}-${Math.random()}`;
-    const newStar: AnimatedStar = {
-      id: starId,
-      x,
-      y,
-      createdAt: Date.now(),
-    };
-
-    setAnimatedStars((prev) => [...prev, newStar]);
-
-    // Remove star after animation completes (0.8 seconds)
-    setTimeout(() => {
-      setAnimatedStars((prev) =>
-        prev.filter((star) => star.id !== starId),
-      );
-    }, 800);
-  }, []);
 
   // Function to convert landmark position to screen coordinates
   const landmarkToScreenCoords = useCallback(
@@ -160,6 +150,33 @@ function GameComponent() {
     [],
   );
 
+  // Function to spawn radial lines for an eye
+  const spawnEyeLines = useCallback((eyeSide: "left" | "right") => {
+    const lines =
+      eyeSide === "left"
+        ? eyeLandmarksRef.current.leftEyeLines
+        : eyeLandmarksRef.current.rightEyeLines;
+
+    lines.forEach((lineData, index) => {
+      const lineId = `line-${eyeSide}-${index}-${Date.now()}-${Math.random()}`;
+
+      const newLine: AnimatedLine = {
+        ...lineData,
+        id: lineId,
+        createdAt: Date.now(),
+      };
+
+      setAnimatedLines((prev) => [...prev, newLine]);
+
+      // Remove line after animation completes (0.8 seconds)
+      setTimeout(() => {
+        setAnimatedLines((prev) =>
+          prev.filter((line) => line.id !== lineId),
+        );
+      }, BLINK_LINE_DURATION_MS);
+    });
+  }, []);
+
   // Callback to handle face events (on open or close)
   const handleFaceEvent = useCallback(
     (
@@ -177,21 +194,8 @@ function GameComponent() {
           BLINK_AUDIO.volume = 0.35;
           BLINK_AUDIO.play();
 
-          // Spawn star at eye corner
-          const eyePosition =
-            bodyPart === "leftEye"
-              ? eyeCornerPositionsRef.current.leftEyeOuter
-              : eyeCornerPositionsRef.current.rightEyeOuter;
-
-          if (eyePosition) {
-            const screenPos = landmarkToScreenCoords(
-              eyePosition.x,
-              eyePosition.y,
-            );
-            if (screenPos) {
-              spawnStar(screenPos.x, screenPos.y);
-            }
-          }
+          // Spawn radial lines at eye
+          spawnEyeLines(bodyPart === "leftEye" ? "left" : "right");
         }
       }
       if (bodyPart === "mouth") {
@@ -202,7 +206,7 @@ function GameComponent() {
         }
       }
     },
-    [landmarkToScreenCoords, spawnStar],
+    [spawnEyeLines],
   );
 
   const faceAnalyzerRef = useRef<FaceAnalyzer | null>(null);
@@ -218,53 +222,82 @@ function GameComponent() {
       const hasFaces =
         results.faceLandmarks && results.faceLandmarks.length > 0;
 
-      if (hasFaces) {
-        setFaceDetected(true);
-        // Clear any existing timeout
-        if (faceDetectionTimeoutRef.current) {
-          clearTimeout(faceDetectionTimeoutRef.current);
+      const canvasElement = canvasRef.current;
+      if (!canvasElement) return;
+
+      if (!hasFaces && !faceDetectionTimeoutRef.current) {
+        faceDetectionTimeoutRef.current = setTimeout(() => {
+          setFaceDetected(false);
           faceDetectionTimeoutRef.current = null;
-        }
-
-        // Update eye center positions for star spawning (midpoint between inner and outer corners)
-        const landmarks = results.faceLandmarks[0];
-
-        // Calculate center point between inner and outer corners for each eye
-        const leftEyeInner = landmarks[263]; // Inner corner (towards nose)
-        const leftEyeOuter = landmarks[362]; // Outer corner (towards ear)
-        const rightEyeInner = landmarks[33]; // Inner corner (towards nose)
-        const rightEyeOuter = landmarks[133]; // Outer corner (towards ear)
-
-        eyeCornerPositionsRef.current = {
-          leftEyeOuter:
-            leftEyeInner && leftEyeOuter
-              ? {
-                  x: (leftEyeInner.x + leftEyeOuter.x) / 2,
-                  y: (leftEyeInner.y + leftEyeOuter.y) / 2,
-                }
-              : null,
-          rightEyeOuter:
-            rightEyeInner && rightEyeOuter
-              ? {
-                  x: (rightEyeInner.x + rightEyeOuter.x) / 2,
-                  y: (rightEyeInner.y + rightEyeOuter.y) / 2,
-                }
-              : null,
-        };
-
-        faceAnalyzerRef.current?.analyzeFace(results);
-      } else {
-        // Set a timeout to mark face as not detected after a brief delay
-        // This prevents flickering when face detection temporarily fails
-        if (!faceDetectionTimeoutRef.current) {
-          faceDetectionTimeoutRef.current = setTimeout(() => {
-            setFaceDetected(false);
-            faceDetectionTimeoutRef.current = null;
-          }, FACE_DETECTION_DELAY);
-        }
+        }, FACE_DETECTION_DELAY);
+        return;
       }
+
+      setFaceDetected(true);
+      // Clear any existing timeout
+      if (faceDetectionTimeoutRef.current) {
+        clearTimeout(faceDetectionTimeoutRef.current);
+        faceDetectionTimeoutRef.current = null;
+      }
+
+      const landmarks = results.faceLandmarks[0];
+      const leftEyePoints = LEFT_EYE_RADIAL_POINTS.map(
+        (index) => landmarks[index],
+      ).map((point) => landmarkToScreenCoords(point.x, point.y));
+      const rightEyePoints = RIGHT_EYE_RADIAL_POINTS.map(
+        (index) => landmarks[index],
+      ).map((point) => landmarkToScreenCoords(point.x, point.y));
+      const chinCenter = landmarkToScreenCoords(
+        landmarks[CHIN_CENTER].x,
+        landmarks[CHIN_CENTER].y,
+      );
+      const foreheadTop = landmarkToScreenCoords(
+        landmarks[FOREHEAD_TOP].x,
+        landmarks[FOREHEAD_TOP].y,
+      );
+      const faceUpAngle =
+        chinCenter && foreheadTop
+          ? Math.atan2(
+              chinCenter.y - foreheadTop.y,
+              chinCenter.x - foreheadTop.x,
+            ) *
+            (180 / Math.PI)
+          : 0;
+
+      const calculateAngle = (index: number) => {
+        const baseAngle = faceUpAngle - 90;
+        switch (index) {
+          case 0:
+            return baseAngle + BLINK_ANGLE_OFFSET;
+          case 1:
+            return baseAngle;
+          case 2:
+            return baseAngle - BLINK_ANGLE_OFFSET;
+          default:
+            throw new Error(`Invalid index: ${index} for eye`);
+        }
+      };
+
+      eyeLandmarksRef.current = {
+        leftEyeLines: leftEyePoints
+          .filter((p) => !!p)
+          .map((point, index) => ({
+            x: point.x,
+            y: point.y,
+            angle: calculateAngle(index),
+          })),
+        rightEyeLines: rightEyePoints
+          .filter((p) => !!p)
+          .map((point, index) => ({
+            x: point.x,
+            y: point.y,
+            angle: calculateAngle(index),
+          })),
+      };
+
+      faceAnalyzerRef.current?.analyzeFace(results);
     },
-    [],
+    [landmarkToScreenCoords],
   );
 
   // Initialize facial landmark detection
@@ -670,27 +703,25 @@ function GameComponent() {
         </div>
       </div>
 
-      {/* Animated stars overlay - positioned relative to viewport */}
-      {animatedStars.map((star) => (
+      {/* Animated radial lines overlay - positioned relative to viewport */}
+      {animatedLines.map((line) => (
         <div
-          key={star.id}
-          className="blink-star"
+          className="blink-line-container"
           style={{
-            position: "fixed",
-            left: star.x - 10, // Center the 20px star
-            top: star.y - 10,
-            width: "20px",
-            height: "20px",
-            pointerEvents: "none",
-            zIndex: 1000,
-            transformOrigin: "center",
+            rotate: `${line.angle}deg`,
+            left: line.x - 1, // Center the 2px line
+            top: line.y - BLINK_LINE_HEIGHT - 10,
+            width: `${BLINK_LINE_WIDTH}px`,
+            height: `${BLINK_LINE_HEIGHT}px`,
           }}
         >
-          <img
-            src="/eye-beat-you/star.svg"
-            alt="Blink star"
-            width="20"
-            height="20"
+          <div
+            key={line.id}
+            className="blink-line"
+            style={{
+              height: "100%",
+              animation: `blink-line-animation ${BLINK_LINE_DURATION_MS}ms linear`,
+            }}
           />
         </div>
       ))}
