@@ -1,3 +1,8 @@
+import {
+  LEFT_MOUTH_RADIAL_POINTS,
+  RIGHT_MOUTH_RADIAL_POINTS,
+} from "@/core/constants";
+
 export interface DrawDebugPointsProps {
   landmarks: Array<{ x: number; y: number; z?: number }>;
   landmarkIndices: number[];
@@ -232,4 +237,31 @@ export function drawCalculationLines({
       legendY,
     );
   }
+}
+
+// New helper to draw mouth radial debug points
+/**
+ * Draws the mouth radial landmark points (used for animation spawn) onto the canvas.
+ * This is useful for debugging and validating the radial point indices.
+ */
+export function drawMouthRadialPoints({
+  landmarks,
+  canvasCtx,
+}: {
+  landmarks: Array<{ x: number; y: number; z?: number }>;
+  canvasCtx: CanvasRenderingContext2D;
+}) {
+  drawDebugPointsOntoCanvas({
+    landmarks,
+    landmarkIndices: LEFT_MOUTH_RADIAL_POINTS,
+    canvasCtx,
+    label: "LM", // Left-Mouth
+  });
+
+  drawDebugPointsOntoCanvas({
+    landmarks,
+    landmarkIndices: RIGHT_MOUTH_RADIAL_POINTS,
+    canvasCtx,
+    label: "RM", // Right-Mouth
+  });
 }

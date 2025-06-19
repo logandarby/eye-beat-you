@@ -10,6 +10,9 @@
   background-color: var(--color-brand-cream);
   transform-origin: top center;
   opacity: 0;
+  stroke: var(--color-brand-dark);
+  stroke-width: 10px;
+  /* box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5); */
 }
 
 @keyframes blink-line-animation {

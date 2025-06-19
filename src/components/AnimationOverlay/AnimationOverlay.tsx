@@ -27,8 +27,8 @@ function AnimationOverlay({
             className="blink-line-container"
             style={{
               transform: `rotate(${line.angle}deg)`,
-              left: line.x - 1, // Center the 2px line
-              top: line.y - BLINK_LINE_HEIGHT - 10,
+              left: line.position.x - 1, // Center the 2px line
+              top: line.position.y - BLINK_LINE_HEIGHT,
               width: `${BLINK_LINE_WIDTH}px`,
               height: `${BLINK_LINE_HEIGHT}px`,
             }}
@@ -51,8 +51,8 @@ function AnimationOverlay({
             key={star.id}
             style={{
               position: "fixed",
-              left: star.x - 10, // Center the star
-              top: star.y - 10,
+              left: star.position.x - 10, // Center the star
+              top: star.position.y - 10,
               width: "20px",
               height: "20px",
               pointerEvents: "none",

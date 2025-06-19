@@ -29,6 +29,7 @@ import SideBar from "./SideBar/SideBar";
 import useAnimationOverlay from "@/hooks/useAnimationOverlay";
 import { useWebcam } from "@/hooks/useWebcam";
 import { calculateObjectCoverDisplayProperties } from "@/utils/object-cover";
+import { debounce } from "@/utils/debounce";
 
 function GameComponent() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -40,7 +41,7 @@ function GameComponent() {
   });
   const detectionEnabled = true;
   const [debugMode, setDebugMode] = useState<
-    "off" | "points" | "lines" | "connectors"
+    "off" | "points" | "lines" | "connectors" | "mouth"
   >("off");
   const [isMuteButtonToggled, setIsMuteButtonToggled] =
     useState(false);
@@ -78,9 +79,24 @@ function GameComponent() {
   const {
     pushLandmarkInformation,
     spawnEyeLines,
+    spawnMouthLines,
     animatedLines,
     stars,
   } = useAnimationOverlay();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const playDebouncedAudio = useCallback(
+    debounce(
+      () => {
+        BLINK_AUDIO.currentTime = 0;
+        BLINK_AUDIO.volume = 0.35;
+        BLINK_AUDIO.play();
+      },
+      16,
+      true,
+    ),
+    [],
+  );
 
   // Callback to handle face events (on open or close)
   const handleFaceEvent = useCallback(
@@ -103,9 +119,7 @@ function GameComponent() {
 
       if (bodyPart === "leftEye" || bodyPart === "rightEye") {
         if (event === "close") {
-          BLINK_AUDIO.currentTime = 0;
-          BLINK_AUDIO.volume = 0.35;
-          BLINK_AUDIO.play();
+          playDebouncedAudio();
 
           // Spawn animations
           const side = bodyPart === "leftEye" ? "left" : "right";
@@ -117,10 +131,12 @@ function GameComponent() {
           MOUTH_OPEN_AUDIO.currentTime = 0;
           MOUTH_OPEN_AUDIO.volume = 0.35;
           MOUTH_OPEN_AUDIO.play();
+          spawnMouthLines("left");
+          spawnMouthLines("right");
         }
       }
     },
-    [spawnEyeLines],
+    [spawnEyeLines, playDebouncedAudio, spawnMouthLines],
   );
 
   const faceAnalyzerRef = useRef<FaceAnalyzer | null>(null);
@@ -187,7 +203,9 @@ function GameComponent() {
               ? "lines"
               : debugMode === "lines"
                 ? "connectors"
-                : "off";
+                : debugMode === "connectors"
+                  ? "mouth"
+                  : "off";
         setDebugMode(nextMode);
       }
     };

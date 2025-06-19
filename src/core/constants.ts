@@ -14,7 +14,7 @@ export const TIMPANI_LO_AUDIO = new Audio(
 
 // Thresholds for determining open/closed state
 export const EYE_ASPECT_RATIO_THRESHOLD = 0.2;
-export const MOUTH_ASPECT_RATIO_THRESHOLD = 0.4;
+export const MOUTH_ASPECT_RATIO_THRESHOLD = 0.7;
 
 // EAR velocity detection settings
 export const EAR_VELOCITY_THRESHOLD = 0.03; // Minimum velocity to trigger blink
@@ -69,8 +69,12 @@ export const RIGHT_EYE_RADIAL_POINTS = [161, 159, 157]; // Top of left eye (3 po
 export const LEFT_EYE_RADIAL_POINTS = [384, 386, 388]; // Top of right eye (3 points)
 
 // Mouth radial points for animations
-export const LEFT_MOUTH_RADIAL_POINTS = [40, 61, 91]; // Left side of mouth (3 points)
-export const RIGHT_MOUTH_RADIAL_POINTS = [270, 300, 321]; // Right side of mouth (3 points)
+export const LEFT_MOUTH_RADIAL_POINTS = [40, 78, 146]; // Left side of mouth (3 points)
+// export const LEFT_MOUTH_RADIAL_POINTS = [0, 0, 0]; // Left side of mouth (3 points)
+export const RIGHT_MOUTH_RADIAL_POINTS = [270, 308, 321]; // Right side of mouth (3 points)
+
+export const LEFT_MOUTH_CORNER = 78;
+export const RIGHT_MOUTH_CORNER = 308;
 
 // Face orientation landmarks for calculating vertical direction (roll)
 export const CHIN_CENTER = 19;

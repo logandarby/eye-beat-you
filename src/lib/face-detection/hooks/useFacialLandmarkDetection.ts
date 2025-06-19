@@ -15,6 +15,7 @@ import {
 import {
   drawDebugPointsOntoCanvas,
   drawCalculationLines,
+  drawMouthRadialPoints,
 } from "@/utils/debug";
 import { globalFaceDetectionTracker } from "@/lib/performance";
 
@@ -24,7 +25,7 @@ interface UseFacialLandmarkDetectionProps {
   faceLandmarker: FaceLandmarker | null;
   isModelLoaded: boolean;
   isEnabled: boolean;
-  debugMode: "off" | "points" | "lines" | "connectors";
+  debugMode: "off" | "points" | "lines" | "connectors" | "mouth";
   onResults?: (results: FaceLandmarkerResult) => void;
 }
 
@@ -155,6 +156,20 @@ export function useFacialLandmarkDetection({
         for (const landmarks of results.faceLandmarks) {
           drawDebugPoints(landmarks, canvasCtx);
         }
+      } else if (debugMode === "mouth") {
+        // Debug mode: Draw only mouth radial points
+        for (const landmarks of results.faceLandmarks) {
+          drawMouthRadialPoints({ landmarks, canvasCtx });
+        }
+        // Draw title
+        canvasCtx.font = "bold 20px Arial";
+        canvasCtx.fillStyle = "#FFFFFF";
+        canvasCtx.strokeStyle = "#000000";
+        canvasCtx.lineWidth = 3;
+        const titleText =
+          "MOUTH RADIAL POINTS (Press D to cycle modes)";
+        canvasCtx.strokeText(titleText, 20, 40);
+        canvasCtx.fillText(titleText, 20, 40);
       } else if (debugMode === "lines") {
         // Debug mode: Draw calculation lines
         for (const landmarks of results.faceLandmarks) {
@@ -237,7 +252,12 @@ export function useFacialLandmarkDetection({
         canvasCtx.fillText(titleText, 20, 40);
       }
     },
-    [debugMode, drawDebugPoints, drawCalculationDebug],
+    [
+      debugMode,
+      drawDebugPoints,
+      drawCalculationDebug,
+      drawMouthRadialPoints,
+    ],
   );
 
   const detectAndDraw = useCallback(async () => {
