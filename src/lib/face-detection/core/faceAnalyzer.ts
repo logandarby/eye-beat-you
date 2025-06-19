@@ -10,9 +10,15 @@ import {
   MAR_VELOCITY_THRESHOLD,
   MAR_VELOCITY_WINDOW_SIZE,
   MEDIAN_FILTER_WINDOW_SIZE,
+  HTR_THRESHOLD,
+  HTR_ROLLING_WINDOW_SIZE,
+  NOSE_CENTER,
+  LEFT_FACE_SIDE,
+  RIGHT_FACE_SIDE,
 } from "@/core/constants";
 import { MedianFilter } from "../utils/medianFilter";
 import { globalFaceDetectionTracker } from "@/lib/performance";
+import { RollingAverage } from "../utils/rollingAverage";
 
 class OrificeState {
   constructor(
@@ -58,10 +64,16 @@ export class FaceAnalyzer {
   private rightEARFilter: MedianFilter;
   private mouthMARFilter: MedianFilter;
 
+  // Rolling average for head turning ratio
+  private htrRollingAverage: RollingAverage;
+
+  // Track current head position to avoid repeated events
+  private currentHeadPosition: "center" | "left" | "right" = "center";
+
   constructor(
     private readonly onEvent: (
-      bodyPart: "leftEye" | "rightEye" | "mouth",
-      event: "open" | "close",
+      bodyPart: "leftEye" | "rightEye" | "mouth" | "head",
+      event: "open" | "close" | "left" | "right",
     ) => void,
   ) {
     console.log("FaceAnalyzer constructor");
@@ -80,6 +92,11 @@ export class FaceAnalyzer {
     this.leftEARFilter = new MedianFilter(MEDIAN_FILTER_WINDOW_SIZE);
     this.rightEARFilter = new MedianFilter(MEDIAN_FILTER_WINDOW_SIZE);
     this.mouthMARFilter = new MedianFilter(MEDIAN_FILTER_WINDOW_SIZE);
+
+    // Initialize rolling average for HTR detection
+    this.htrRollingAverage = new RollingAverage(
+      HTR_ROLLING_WINDOW_SIZE,
+    );
   }
 
   /**
@@ -317,6 +334,43 @@ export class FaceAnalyzer {
     );
     this.updateOrificeState(this.mouthState, mouthOpen, "mouth");
 
+    // Calculate Head Turning Ratio (HTR)
+    const pointNose = landmarks[NOSE_CENTER];
+    const pointLeftFace = landmarks[LEFT_FACE_SIDE];
+    const pointRightFace = landmarks[RIGHT_FACE_SIDE];
+
+    const distanceA = this.distance(pointLeftFace, pointNose); // From left side to nose
+    const distanceB = this.distance(pointNose, pointRightFace); // From nose to right side
+
+    const htrDenominator = distanceA + distanceB;
+    const rawHTR =
+      htrDenominator === 0
+        ? 0
+        : (distanceA - distanceB) / htrDenominator;
+
+    // Update rolling average for HTR
+    this.htrRollingAverage.addValue(rawHTR);
+    const avgHTR = this.htrRollingAverage.getAverage();
+
+    // Determine head position based on threshold
+    let newHeadPosition: "center" | "left" | "right" = "center";
+    if (avgHTR > HTR_THRESHOLD) {
+      newHeadPosition = "left";
+    } else if (avgHTR < -HTR_THRESHOLD) {
+      newHeadPosition = "right";
+    }
+
+    // Trigger event if head position changed and is not center
+    if (
+      newHeadPosition !== this.currentHeadPosition &&
+      newHeadPosition !== "center"
+    ) {
+      this.onEvent("head", newHeadPosition);
+    }
+
+    // Update current position
+    this.currentHeadPosition = newHeadPosition;
+
     // End tracking analysis stage
     globalFaceDetectionTracker.endStage("analysis");
   }
@@ -341,6 +395,10 @@ export class FaceAnalyzer {
     this.leftEARFilter.reset();
     this.rightEARFilter.reset();
     this.mouthMARFilter.reset();
+
+    // Reset head turning detection
+    this.htrRollingAverage.reset();
+    this.currentHeadPosition = "center";
   }
 
   /**
@@ -376,6 +434,16 @@ export class FaceAnalyzer {
       leftVelocityCount: this.leftEARVelocity.getCount(),
       rightVelocityCount: this.rightEARVelocity.getCount(),
       mouthVelocityCount: this.mouthMARVelocity.getCount(),
+    };
+  }
+
+  /**
+   * Get current Head Turning Ratio
+   */
+  public getCurrentHTR() {
+    return {
+      htrAverage: this.htrRollingAverage.getAverage(),
+      htrCount: this.htrRollingAverage.getCount(),
     };
   }
 }

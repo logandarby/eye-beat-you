@@ -3,8 +3,14 @@ export const CAMERA_READY_DELAY = 300;
 export const FACE_DETECTION_DELAY = 1000;
 
 // Audio files to play
-export const BLINK_AUDIO = new Audio("/eye-beat-you/blink.mp3");
-export const MOUTH_OPEN_AUDIO = new Audio("/eye-beat-you/scream.mp3");
+export const BLINK_AUDIO = new Audio("/eye-beat-you/blink.wav");
+export const MOUTH_OPEN_AUDIO = new Audio("/eye-beat-you/scream.wav");
+export const TIMPANI_HI_AUDIO = new Audio(
+  "/eye-beat-you/timpani-hi.wav",
+);
+export const TIMPANI_LO_AUDIO = new Audio(
+  "/eye-beat-you/timpani-lo.wav",
+);
 
 // Thresholds for determining open/closed state
 export const EYE_ASPECT_RATIO_THRESHOLD = 0.2;
@@ -73,3 +79,12 @@ export const FOREHEAD_TOP = 10;
 // Star spawn points (inner eye corners)
 export const LEFT_EYE_INNER_CORNER = 263;
 export const RIGHT_EYE_INNER_CORNER = 33;
+
+// Head Turn Ratio (HTR) detection settings
+export const HTR_THRESHOLD = 0.4; // Absolute threshold for detecting head turning (positive -> left, negative -> right)
+export const HTR_ROLLING_WINDOW_SIZE = 5; // Window size for HTR rolling average calculation
+
+// Landmarks for HTR calculation
+export const NOSE_CENTER = 164;
+export const LEFT_FACE_SIDE = 137;
+export const RIGHT_FACE_SIDE = 366;

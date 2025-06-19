@@ -12,6 +12,8 @@ import {
   CAMERA_READY_DELAY,
   FACE_DETECTION_DELAY,
   MOUTH_OPEN_AUDIO,
+  TIMPANI_HI_AUDIO,
+  TIMPANI_LO_AUDIO,
 } from "@/core/constants";
 import { Button } from "@/lib/ui/components/button";
 import {
@@ -83,10 +85,21 @@ function GameComponent() {
   // Callback to handle face events (on open or close)
   const handleFaceEvent = useCallback(
     (
-      bodyPart: "leftEye" | "rightEye" | "mouth",
-      event: "open" | "close",
+      bodyPart: "leftEye" | "rightEye" | "mouth" | "head",
+      event: "open" | "close" | "left" | "right",
     ) => {
       if (isMutedRef.current) return;
+
+      if (bodyPart === "head") {
+        if (event === "left") {
+          TIMPANI_HI_AUDIO.currentTime = 0;
+          TIMPANI_HI_AUDIO.play();
+        } else if (event === "right") {
+          TIMPANI_LO_AUDIO.currentTime = 0;
+          TIMPANI_LO_AUDIO.play();
+        }
+        return;
+      }
 
       if (bodyPart === "leftEye" || bodyPart === "rightEye") {
         if (event === "close") {
