@@ -62,6 +62,10 @@ export const LEFT_EYE_CENTER = 473;
 export const RIGHT_EYE_RADIAL_POINTS = [161, 159, 157]; // Top of left eye (3 points)
 export const LEFT_EYE_RADIAL_POINTS = [384, 386, 388]; // Top of right eye (3 points)
 
+// Mouth radial points for animations
+export const LEFT_MOUTH_RADIAL_POINTS = [40, 61, 91]; // Left side of mouth (3 points)
+export const RIGHT_MOUTH_RADIAL_POINTS = [270, 300, 321]; // Right side of mouth (3 points)
+
 // Face orientation landmarks for calculating vertical direction (roll)
 export const CHIN_CENTER = 19;
 export const FOREHEAD_TOP = 10;

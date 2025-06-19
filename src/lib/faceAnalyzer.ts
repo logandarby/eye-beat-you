@@ -64,6 +64,7 @@ export class FaceAnalyzer {
       event: "open" | "close",
     ) => void,
   ) {
+    console.log("FaceAnalyzer constructor");
     // Initialize median filters for EAR velocity tracking
     this.leftEARVelocity = new MedianFilter(EAR_VELOCITY_WINDOW_SIZE);
     this.rightEARVelocity = new MedianFilter(
