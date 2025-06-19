@@ -1,3 +1,4 @@
+import "./AnimationOverlay.css";
 import {
   BLINK_LINE_DURATION_MS,
   BLINK_LINE_HEIGHT,
@@ -55,7 +56,7 @@ function AnimationOverlay({
               width: "20px",
               height: "20px",
               pointerEvents: "none",
-              zIndex: 1001,
+              zIndex: 10,
             }}
           >
             <img

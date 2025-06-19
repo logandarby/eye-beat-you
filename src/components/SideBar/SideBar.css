@@ -1,0 +1,71 @@
+@import "../../index.css";
+
+@layer components {
+  .button-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  /* Muted button styling */
+  .muted-button {
+    background-color: #dc2626 !important;
+    color: var(--color-brand-cream) !important;
+    border-color: #dc2626 !important;
+  }
+
+  .muted-button:hover {
+    background-color: #b91c1c !important;
+    border-color: #b91c1c !important;
+  }
+
+  /* Muted text overlay */
+  .muted-overlay {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  .muted-overlay span {
+    background-color: rgba(220, 38, 38, 0.9);
+    color: var(--color-brand-cream);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 2px solid #dc2626;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
+  }
+
+  /* Help dialog content styles */
+  .help-content {
+    font-family: var(--font-body);
+    color: var(--color-brand-dark);
+    line-height: 1.6;
+  }
+
+  .help-section {
+    margin-bottom: 1rem;
+    font-size: 14px;
+  }
+
+  .help-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .help-section strong {
+    color: var(--color-brand-orange-dark);
+    font-weight: 600;
+  }
+}

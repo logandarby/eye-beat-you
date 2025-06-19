@@ -12,14 +12,6 @@ import {
   FACE_DETECTION_DELAY,
   MOUTH_OPEN_AUDIO,
 } from "@/lib/constants";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
   PerformanceViewer,
@@ -28,13 +20,10 @@ import {
   createFaceDetectionMetrics,
 } from "@/lib/performance";
 import "@fortawesome/fontawesome-free/css/all.min.css";
-import AnimationOverlay from "./AnimationOverlay";
-import {
-  BLINK_LINE_DURATION_MS,
-  type AnimatedLine,
-  type Star,
-} from "./AnimationOverlay.utils";
-import { calculateAnimations } from "./util";
+import AnimationOverlay from "./AnimationOverlay/AnimationOverlay";
+import FunnyStickers from "./FunnyStickers/FunnyStickers";
+import SideBar from "./SideBar/SideBar";
+import useAnimationOverlay from "@/hooks/useAnimationOverlay";
 
 function GameComponent() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,30 +37,15 @@ function GameComponent() {
   const [debugMode, setDebugMode] = useState<
     "off" | "points" | "lines" | "connectors"
   >("off");
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuteButtonToggled, setIsMuteButtonToggled] =
+    useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const isMutedRef = useRef(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const faceDetectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [cameraReadyDelayPassed, setCameraReadyDelayPassed] =
     useState(false);
   const cameraReadyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Animation states
-  const [animatedLines, setAnimatedLines] = useState<AnimatedLine[]>(
-    [],
-  );
-  const [stars, setStars] = useState<Star[]>([
-    { id: "left-star", side: "left", x: 0, y: 0 },
-    { id: "right-star", side: "right", x: 0, y: 0 },
-  ]);
-
-  const eyeLandmarksRef = useRef<{
-    leftEyeLines: Array<{ x: number; y: number; angle: number }>;
-    rightEyeLines: Array<{ x: number; y: number; angle: number }>;
-  }>({
-    leftEyeLines: [],
-    rightEyeLines: [],
-  });
 
   // Performance tracking
   const isPerformanceVisible = usePerformanceToggle();
@@ -93,37 +67,15 @@ function GameComponent() {
   } = useFaceLandmarker();
 
   useEffect(() => {
-    isMutedRef.current = isMuted;
-  }, [isMuted]);
+    isMutedRef.current = isMuteButtonToggled || isHelpOpen;
+  }, [isMuteButtonToggled, isHelpOpen]);
 
-  // Function to spawn radial lines for an eye
-  const spawnEyeLines = useCallback((eyeSide: "left" | "right") => {
-    const lines =
-      eyeSide === "left"
-        ? eyeLandmarksRef.current.leftEyeLines
-        : eyeLandmarksRef.current.rightEyeLines;
-
-    lines.forEach((lineData, index) => {
-      const lineId = `line-${eyeSide}-${index}-${Date.now()}-${Math.random()}`;
-
-      const newLine: AnimatedLine = {
-        ...lineData,
-        id: lineId,
-        side: eyeSide,
-        index,
-        createdAt: Date.now(),
-      };
-
-      setAnimatedLines((prev) => [...prev, newLine]);
-
-      // Remove line after animation completes
-      setTimeout(() => {
-        setAnimatedLines((prev) =>
-          prev.filter((line) => line.id !== lineId),
-        );
-      }, BLINK_LINE_DURATION_MS);
-    });
-  }, []);
+  const {
+    pushLandmarkInformation,
+    spawnEyeLines,
+    animatedLines,
+    stars,
+  } = useAnimationOverlay();
 
   // Callback to handle face events (on open or close)
   const handleFaceEvent = useCallback(
@@ -189,50 +141,12 @@ function GameComponent() {
         clearTimeout(faceDetectionTimeoutRef.current);
         faceDetectionTimeoutRef.current = null;
       }
-
-      const {
-        leftEyeLines,
-        rightEyeLines,
-        leftInnerCorner,
-        rightInnerCorner,
-      } = calculateAnimations({
-        landmarks: results.faceLandmarks[0],
+      pushLandmarkInformation(
+        results.faceLandmarks[0]!,
         videoElement,
-      });
-
-      eyeLandmarksRef.current = {
-        leftEyeLines,
-        rightEyeLines,
-      };
-
-      // Update positions of existing animated lines to follow face
-      setAnimatedLines((prev) =>
-        prev.map((line) => {
-          const point =
-            line.side === "left"
-              ? leftEyeLines[line.index]
-              : rightEyeLines[line.index];
-          if (!point) return line;
-          return {
-            ...line,
-            x: point.x,
-            y: point.y,
-            angle: point.angle,
-          };
-        }),
-      );
-
-      // Update star positions
-      setStars((prev) =>
-        prev.map((star: Star) => {
-          const corner =
-            star.side === "left" ? leftInnerCorner : rightInnerCorner;
-          if (!corner) return star;
-          return { ...star, x: corner.x, y: corner.y };
-        }),
       );
     },
-    [],
+    [pushLandmarkInformation],
   );
 
   // Initialize facial landmark detection
@@ -430,161 +344,11 @@ function GameComponent() {
       <div className="relative overflow-visible">
         {cameraStatus === "success" && (
           <>
-            <div className="cute-tag scale-75 sm:scale-100 origin-top-right">
-              <div className="cute-tag-hello">
-                <svg viewBox="0 0 120 20">
-                  <defs>
-                    <path
-                      id="curve"
-                      d={`M 10 25 Q 60 5 110 25`}
-                      fill="none"
-                    />
-                  </defs>
-                  <text>
-                    <textPath
-                      href="#curve"
-                      startOffset="50%"
-                      textAnchor="middle"
-                    >
-                      Hello
-                    </textPath>
-                  </text>
-                </svg>
-              </div>
-              <span className="cute-tag-gorgeous">Gorgeous!</span>
-            </div>
-
-            <div className="button-controls top-1/2 -translate-y-1/2">
-              <Dialog onOpenChange={setIsMuted}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <i className="far fa-question" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>
-                      Eye Beat You! - The Art of Making Faces
-                    </DialogTitle>
-                    <DialogDescription>
-                      A Comprehensive Guide to Looking Ridiculous on
-                      Camera
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="help-content">
-                    <p className="help-section">
-                      <strong>What is this?</strong> A completely
-                      over-engineered application to make delightfully
-                      obnoxious sounds in the most roundabout way
-                      possible.
-                    </p>
-                    <p className="help-section">
-                      <strong>How do I use it?</strong> Blink and open
-                      your mouth! Make funny faces! See what happens.
-                    </p>
-                    <p className="help-section">
-                      <strong>Pro Tip:</strong> Make sure your face is
-                      visible, well-lit, and not covered by your hair
-                      or glasses.
-                    </p>
-                    <p className="help-section">
-                      <strong>Who made this?</strong>{" "}
-                      <a
-                        className="underline"
-                        href="https://github.com/logandarby"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        I did.
-                      </a>
-                    </p>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <Button
-                variant="outline"
-                size="icon"
-                className={isMuted ? "muted-button" : ""}
-                onClick={() => setIsMuted(!isMuted)}
-              >
-                <i
-                  className={`fas ${
-                    isMuted ? "fa-volume-xmark" : "fa-volume-high"
-                  }`}
-                />
-              </Button>
-            </div>
-
-            <div className="warning-notice sticker-shine scale-75 sm:scale-100 origin-bottom-left">
-              <div className="warning-notice-inner">
-                <div className="warning-notice-title">WARNING:</div>
-                <div className="warning-notice-text">
-                  Objects in mirror are more handsome than they
-                  appear.
-                </div>
-              </div>
-            </div>
-
-            <div className="circle-sticker sticker-shine scale-75 sm:scale-100 origin-left -translate-x-8 sm:translate-x-6">
-              <svg viewBox="0 0 120 120">
-                <defs>
-                  <path
-                    id="circle"
-                    d="M 60,60 m -45,0 a 45,45 0 1,1 90,0 a 45,45 0 1,1 -90,0"
-                    fill="none"
-                  />
-                </defs>
-                <text>
-                  <textPath href="#circle" startOffset="11%">
-                    My head is shaped like an egg.
-                  </textPath>
-                </text>
-                <g transform="translate(40, 85) scale(0.007, 0.007) translate(-640, -350) rotate(-90)">
-                  <path
-                    d="M3170 6659 c-585 -60 -1143 -473 -1582 -1172 -100 -160 -274 -504 -341 -677 -395 -1013 -421 -2054 -70 -2860 217 -501 537 -871 975 -1131 239 -142 477 -229 767 -280 145 -26 451 -36 604 -20 917 93 1661 711 1976 1639 70 204 117 420 146 667 23 189 23 566 1 778 -55 522 -198 1032 -419 1491 -190 394 -392 689 -656 960 -363 371 -735 566 -1158 606 -119 11 -122 11 -243 -1z"
-                    fill="var(--color-brand-cream)"
-                    stroke="var(--color-brand-dark)"
-                    strokeWidth="80"
-                  />
-                </g>
-              </svg>
-            </div>
-
-            <div className="encouragement-badge scale-75 sm:scale-100 origin-top-left">
-              <div className="encouragement-text-bg"></div>
-              <div className="encouragement-orange"></div>
-              <svg viewBox="0 0 180 180">
-                <defs>
-                  <path
-                    id="encouragement-circle"
-                    d="M 90,90 m -58,0 a 58,58 0 1,1 116,0 a 58,58 0 1,1 -116,0"
-                    fill="none"
-                  />
-                </defs>
-                <text>
-                  <textPath
-                    href="#encouragement-circle"
-                    startOffset="0%"
-                  >
-                    You're doing amazing sweetie
-                  </textPath>
-                </text>
-                <g transform="rotate(126 90 90)">
-                  <g transform="translate(98, 20) scale(0.055, 0.055)">
-                    <path
-                      d="M6.839,137.02l46.417,47.774l-8.028,68.045l-0.045,0.619c-0.33,8.836,2.138,16.25,7.129,21.429c7.104,7.374,18.707,8.866,30.214,3.677l61.621-33.545l61.099,33.281l0.518,0.264c4.637,2.087,9.201,3.148,13.579,3.148c6.484,0,12.39-2.428,16.63-6.825c4.991-5.179,7.46-12.593,7.13-21.429l-8.079-68.664l45.793-47.05l0.624-0.724c6.398-8.417,8.415-18.073,5.535-26.482c-2.884-8.409-10.395-14.8-20.611-17.524l-68.781-11.09l-29.99-60.339l-0.452-0.792c-5.916-9.052-14.594-14.247-23.811-14.247c-8.861,0-17.113,4.634-23.247,13.035l-35.47,62.327L22.495,92.344l-0.853,0.193c-10.141,2.895-17.575,9.422-20.398,17.912C-1.58,118.935,0.456,128.624,6.839,137.02z"
-                      fill="var(--color-brand-cream)"
-                    />
-                  </g>
-                </g>
-              </svg>
-            </div>
-
-            <img
-              src="/eye-beat-you/star.svg"
-              alt="Star sticker"
-              className="star-sticker sticker-shine scale-75 sm:scale-100 origin-bottom-right"
+            <FunnyStickers />
+            <SideBar
+              isMuted={isMuteButtonToggled}
+              onMuteChange={setIsMuteButtonToggled}
+              onOpenChange={setIsHelpOpen}
             />
           </>
         )}
@@ -615,7 +379,7 @@ function GameComponent() {
           />
 
           {/* Muted text overlay */}
-          {isMuted && (
+          {isMuteButtonToggled && (
             <div className="muted-overlay">
               <span>Muted</span>
             </div>

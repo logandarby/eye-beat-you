@@ -1,0 +1,28 @@
+.blink-line-container {
+  overflow: hidden;
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Blink radial line animation */
+.blink-line {
+  background-color: var(--color-brand-cream);
+  transform-origin: top center;
+  opacity: 0;
+}
+
+@keyframes blink-line-animation {
+  0% {
+    transform: translateY(100%);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
