@@ -8,7 +8,7 @@ import {
   LEFT_EYE_LANDMARKS,
   MOUTH_LANDMARKS,
   RIGHT_EYE_LANDMARKS,
-  NOSE_CENTER,
+  PHILTRUM_CENTER,
   LEFT_FACE_SIDE,
   RIGHT_FACE_SIDE,
 } from "@/core/constants";
@@ -70,7 +70,7 @@ export function useFacialLandmarkDetection({
       drawDebugPointsOntoCanvas({
         landmarks,
         landmarkIndices: [
-          NOSE_CENTER,
+          PHILTRUM_CENTER,
           LEFT_FACE_SIDE,
           RIGHT_FACE_SIDE,
         ],

@@ -89,6 +89,11 @@ export const HTR_THRESHOLD = 0.4; // Absolute threshold for detecting head turni
 export const HTR_ROLLING_WINDOW_SIZE = 5; // Window size for HTR rolling average calculation
 
 // Landmarks for HTR calculation
-export const NOSE_CENTER = 164;
+export const PHILTRUM_CENTER = 164;
+export const NOSE_CENTER = 1;
 export const LEFT_FACE_SIDE = 137;
 export const RIGHT_FACE_SIDE = 366;
+
+// Head Pitch Ratio (HPR) detection settings
+export const HPR_THRESHOLD = 0.3; // Threshold for detecting head pitch (positive -> up, negative -> down)
+export const HPR_ROLLING_WINDOW_SIZE = 5; // Window size for HPR rolling average calculation

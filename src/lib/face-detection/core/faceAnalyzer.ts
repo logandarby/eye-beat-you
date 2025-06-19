@@ -12,13 +12,24 @@ import {
   MEDIAN_FILTER_WINDOW_SIZE,
   HTR_THRESHOLD,
   HTR_ROLLING_WINDOW_SIZE,
-  NOSE_CENTER,
+  PHILTRUM_CENTER,
   LEFT_FACE_SIDE,
   RIGHT_FACE_SIDE,
+  FOREHEAD_TOP,
+  CHIN_CENTER,
+  HPR_THRESHOLD,
+  HPR_ROLLING_WINDOW_SIZE,
+  NOSE_CENTER,
 } from "@/core/constants";
 import { MedianFilter } from "../utils/medianFilter";
 import { globalFaceDetectionTracker } from "@/lib/performance";
 import { RollingAverage } from "../utils/rollingAverage";
+import {
+  calculateEAR,
+  calculateMAR,
+  calculateHTR,
+  calculateHPR,
+} from "../utils/faceMetrics";
 
 class OrificeState {
   constructor(
@@ -67,13 +78,19 @@ export class FaceAnalyzer {
   // Rolling average for head turning ratio
   private htrRollingAverage: RollingAverage;
 
+  // Rolling average for head pitch ratio
+  private hprRollingAverage: RollingAverage;
+
   // Track current head position to avoid repeated events
   private currentHeadPosition: "center" | "left" | "right" = "center";
+
+  // Track current head pitch to avoid repeated events
+  private currentHeadPitch: "center" | "up" | "down" = "center";
 
   constructor(
     private readonly onEvent: (
       bodyPart: "leftEye" | "rightEye" | "mouth" | "head",
-      event: "open" | "close" | "left" | "right",
+      event: "open" | "close" | "left" | "right" | "up" | "down",
     ) => void,
   ) {
     console.log("FaceAnalyzer constructor");
@@ -97,82 +114,11 @@ export class FaceAnalyzer {
     this.htrRollingAverage = new RollingAverage(
       HTR_ROLLING_WINDOW_SIZE,
     );
-  }
 
-  /**
-   * Calculate Eye Aspect Ratio (EAR) using only outer vertical distance
-   * EAR = |p2-p6| / |p1-p4|
-   * Where:
-   * p1, p4 = horizontal eye corners
-   * p2, p6 = top and bottom outer vertical points
-   */
-  private calculateEAR(
-    eyeLandmarks: Array<{ x: number; y: number; z?: number }>,
-  ): number {
-    if (eyeLandmarks.length < 6) {
-      throw new Error("Eye landmarks length is not 6");
-    }
-
-    // Calculate distances between points
-    const p1 = eyeLandmarks[0]; // Left corner
-    const p2 = eyeLandmarks[1]; // Top outer
-    const p4 = eyeLandmarks[3]; // Right corner
-    const p6 = eyeLandmarks[5]; // Bottom outer
-
-    const outerVertical = this.distance(p2, p6);
-    const horizontal = this.distance(p1, p4);
-
-    if (horizontal === 0) return 0;
-
-    // EAR calculation using only outer vertical distance
-    return outerVertical / horizontal;
-  }
-
-  private distance(
-    p1: { x: number; y: number },
-    p2: { x: number; y: number },
-  ): number {
-    return Math.sqrt(
-      Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2),
+    // Initialize rolling average for HPR detection
+    this.hprRollingAverage = new RollingAverage(
+      HPR_ROLLING_WINDOW_SIZE,
     );
-  }
-
-  /**
-   * Calculate Mouth Aspect Ratio (MAR)
-   * Similar to EAR but for mouth opening
-   */
-  private calculateMAR(
-    mouthLandmarks: Array<{ x: number; y: number; z?: number }>,
-  ): number {
-    if (mouthLandmarks.length !== 8) {
-      throw new Error("Mouth landmarks length is not 8");
-    }
-
-    // Vertical distances (mouth height at different points)
-    const vertical1 = this.distance(
-      mouthLandmarks[2],
-      mouthLandmarks[3],
-    );
-    const vertical2 = this.distance(
-      mouthLandmarks[4],
-      mouthLandmarks[5],
-    );
-    const vertical3 = this.distance(
-      mouthLandmarks[6],
-      mouthLandmarks[7],
-    );
-
-    // Horizontal distance (mouth width)
-    const horizontal = this.distance(
-      mouthLandmarks[0],
-      mouthLandmarks[1],
-    );
-
-    // Avoid division by zero
-    if (horizontal === 0) return 0;
-
-    // MAR calculation
-    return (vertical1 + vertical2 + vertical3) / (3.0 * horizontal);
   }
 
   /**
@@ -274,12 +220,12 @@ export class FaceAnalyzer {
     );
 
     // Calculate raw EAR values
-    const rawLeftEAR = this.calculateEAR(leftEyeLandmarks);
-    const rawRightEAR = this.calculateEAR(rightEyeLandmarks);
+    const rawLeftEAR = calculateEAR(leftEyeLandmarks);
+    const rawRightEAR = calculateEAR(rightEyeLandmarks);
 
     // Calculate raw MAR for mouth
     const mouthLandmarks = this.extractMouthLandmarks(landmarks);
-    const rawMouthMAR = this.calculateMAR(mouthLandmarks);
+    const rawMouthMAR = calculateMAR(mouthLandmarks);
 
     // Apply median filtering to smooth the values
     this.leftEARFilter.addValue(rawLeftEAR);
@@ -334,19 +280,13 @@ export class FaceAnalyzer {
     );
     this.updateOrificeState(this.mouthState, mouthOpen, "mouth");
 
-    // Calculate Head Turning Ratio (HTR)
-    const pointNose = landmarks[NOSE_CENTER];
-    const pointLeftFace = landmarks[LEFT_FACE_SIDE];
-    const pointRightFace = landmarks[RIGHT_FACE_SIDE];
-
-    const distanceA = this.distance(pointLeftFace, pointNose); // From left side to nose
-    const distanceB = this.distance(pointNose, pointRightFace); // From nose to right side
-
-    const htrDenominator = distanceA + distanceB;
-    const rawHTR =
-      htrDenominator === 0
-        ? 0
-        : (distanceA - distanceB) / htrDenominator;
+    // Calculate Head Turning Ratio (HTR) using util
+    const rawHTR = calculateHTR(
+      landmarks,
+      PHILTRUM_CENTER,
+      LEFT_FACE_SIDE,
+      RIGHT_FACE_SIDE,
+    );
 
     // Update rolling average for HTR
     this.htrRollingAverage.addValue(rawHTR);
@@ -370,6 +310,45 @@ export class FaceAnalyzer {
 
     // Update current position
     this.currentHeadPosition = newHeadPosition;
+
+    /**
+     * -----------------------
+     *  Head Pitch Calculation
+     * -----------------------
+     */
+
+    // Calculate Head Pitch Ratio (HPR) using util
+    const rawHPR = calculateHPR(
+      landmarks,
+      NOSE_CENTER,
+      LEFT_FACE_SIDE,
+      RIGHT_FACE_SIDE,
+      FOREHEAD_TOP,
+      CHIN_CENTER,
+    );
+
+    // Update rolling average for HPR
+    this.hprRollingAverage.addValue(rawHPR);
+    const avgHPR = this.hprRollingAverage.getAverage();
+
+    // Determine head pitch based on threshold
+    let newHeadPitch: "center" | "up" | "down" = "center";
+    if (avgHPR > HPR_THRESHOLD) {
+      newHeadPitch = "up";
+    } else if (avgHPR < -HPR_THRESHOLD) {
+      newHeadPitch = "down";
+    }
+
+    // Trigger event if head pitch changed and is not center
+    if (
+      newHeadPitch !== this.currentHeadPitch &&
+      newHeadPitch !== "center"
+    ) {
+      this.onEvent("head", newHeadPitch);
+    }
+
+    // Update current pitch
+    this.currentHeadPitch = newHeadPitch;
 
     // End tracking analysis stage
     globalFaceDetectionTracker.endStage("analysis");
@@ -399,6 +378,10 @@ export class FaceAnalyzer {
     // Reset head turning detection
     this.htrRollingAverage.reset();
     this.currentHeadPosition = "center";
+
+    // Reset head pitch detection
+    this.hprRollingAverage.reset();
+    this.currentHeadPitch = "center";
   }
 
   /**
@@ -444,6 +427,16 @@ export class FaceAnalyzer {
     return {
       htrAverage: this.htrRollingAverage.getAverage(),
       htrCount: this.htrRollingAverage.getCount(),
+    };
+  }
+
+  /**
+   * Get current Head Pitch Ratio
+   */
+  public getCurrentHPR() {
+    return {
+      hprAverage: this.hprRollingAverage.getAverage(),
+      hprCount: this.hprRollingAverage.getCount(),
     };
   }
 }

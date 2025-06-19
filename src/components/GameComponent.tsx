@@ -102,7 +102,7 @@ function GameComponent() {
   const handleFaceEvent = useCallback(
     (
       bodyPart: "leftEye" | "rightEye" | "mouth" | "head",
-      event: "open" | "close" | "left" | "right",
+      event: "open" | "close" | "left" | "right" | "up" | "down",
     ) => {
       if (isMutedRef.current) return;
 
@@ -113,6 +113,9 @@ function GameComponent() {
         } else if (event === "right") {
           TIMPANI_LO_AUDIO.currentTime = 0;
           TIMPANI_LO_AUDIO.play();
+        } else if (event === "up" || event === "down") {
+          // Log head pitch events to the console
+          console.log(`Head pitch detected: ${event}`);
         }
         return;
       }
