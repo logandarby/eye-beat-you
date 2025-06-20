@@ -11,9 +11,11 @@ import {
   BLINK_AUDIO,
   CAMERA_READY_DELAY,
   FACE_DETECTION_DELAY,
+  HEAVEN_AUDIO,
   MOUTH_OPEN_AUDIO,
   TIMPANI_HI_AUDIO,
   TIMPANI_LO_AUDIO,
+  TIMPANI_LOWEST_AUDIO,
 } from "@/core/constants";
 import { Button } from "@/lib/ui/components/button";
 import {
@@ -113,9 +115,13 @@ function GameComponent() {
         } else if (event === "right") {
           TIMPANI_LO_AUDIO.currentTime = 0;
           TIMPANI_LO_AUDIO.play();
-        } else if (event === "up" || event === "down") {
-          // Log head pitch events to the console
-          console.log(`Head pitch detected: ${event}`);
+        } else if (event === "up") {
+          HEAVEN_AUDIO.currentTime = 0;
+          HEAVEN_AUDIO.volume = 0.35;
+          HEAVEN_AUDIO.play();
+        } else if (event === "down") {
+          TIMPANI_LOWEST_AUDIO.currentTime = 0;
+          TIMPANI_LOWEST_AUDIO.play();
         }
         return;
       }

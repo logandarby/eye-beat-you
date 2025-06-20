@@ -11,6 +11,10 @@ export const TIMPANI_HI_AUDIO = new Audio(
 export const TIMPANI_LO_AUDIO = new Audio(
   "/eye-beat-you/timpani-lo.wav",
 );
+export const HEAVEN_AUDIO = new Audio("/eye-beat-you/heaven.wav");
+export const TIMPANI_LOWEST_AUDIO = new Audio(
+  "/eye-beat-you/timpani-lowest.wav",
+);
 
 // Thresholds for determining open/closed state
 export const EYE_ASPECT_RATIO_THRESHOLD = 0.2;
