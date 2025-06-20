@@ -64,15 +64,32 @@ export function calculateHTR(
   leftFaceIdx: number,
   rightFaceIdx: number,
 ): number {
-  const pointNose = landmarks[philtrumIdx];
-  const pointLeft = landmarks[leftFaceIdx];
-  const pointRight = landmarks[rightFaceIdx];
+  // HTR = sin(clamp((nose.x – midX) / (faceWidth/2), -1, 1)) – horizontal offset of the philtrum within the face width.
 
-  const distanceA = distance(pointLeft, pointNose);
-  const distanceB = distance(pointNose, pointRight);
-  const denom = distanceA + distanceB;
+  // Gather points.
+  const nose = landmarks[philtrumIdx];
+  const left = landmarks[leftFaceIdx];
+  const right = landmarks[rightFaceIdx];
 
-  return denom === 0 ? 0 : (distanceA - distanceB) / denom;
+  // Compute half-width of the face.
+  const faceWidth = right.x - left.x;
+  // Guard against division by zero (should not happen under normal circumstances).
+  if (faceWidth === 0) {
+    return 0;
+  }
+
+  const halfWidth = faceWidth / 2.0;
+
+  // Horizontal displacement of the nose from mid-point.
+  const midX = left.x + halfWidth;
+  let rawRatio = (nose.x - midX) / halfWidth; // Expected range ≈ [-1, 1]
+
+  // Clamp ratio to [-1,1].
+  if (rawRatio > 1) rawRatio = 1;
+  else if (rawRatio < -1) rawRatio = -1;
+
+  // Map through sin() for smoother curve near center.
+  return Math.sin(rawRatio);
 }
 
 /**
@@ -105,5 +122,7 @@ export function calculateHPR(
   const cnDistance = denominator === 0 ? 0 : numerator / denominator;
 
   const headHeight = distance(forehead, chin);
-  return headHeight === 0 ? 0 : cnDistance / headHeight;
+  const hpr = headHeight === 0 ? 0 : cnDistance / headHeight;
+  // Use sin to make it more linear
+  return Math.sin(hpr);
 }

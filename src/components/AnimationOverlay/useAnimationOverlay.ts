@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import {
   BLINK_LINE_DURATION_MS,
   calculateAnimations,
@@ -10,10 +10,42 @@ import {
 import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { MedianFilter } from "@/lib/face-detection/utils/medianFilter";
 
+// Metric calculation helpers
+import {
+  calculateEAR,
+  calculateMAR,
+  calculateHTR,
+  calculateHPR,
+  type Point3D,
+} from "@/lib/face-detection/utils/faceMetrics";
+import {
+  LEFT_EYE_LANDMARKS,
+  RIGHT_EYE_LANDMARKS,
+  MOUTH_LANDMARKS,
+  PHILTRUM_CENTER,
+  LEFT_FACE_SIDE,
+  RIGHT_FACE_SIDE,
+  NOSE_CENTER,
+  FOREHEAD_TOP,
+  CHIN_CENTER,
+} from "@/core/constants";
+
 const STAR_ROLLING_AVERAGE_WINDOW = 5;
 
-export default function useAnimationOverlay() {
+export interface FaceMetrics {
+  leftEAR: number;
+  rightEAR: number;
+  mouthMAR: number;
+  htr: number;
+  hpr: number;
+}
+
+export default function useAnimationOverlay(
+  videoElement: HTMLVideoElement | null,
+) {
+  // ------------------------
   // Animation states
+  // ------------------------
   const [animatedLines, setAnimatedLines] = useState<AnimatedLine[]>(
     [],
   );
@@ -31,6 +63,14 @@ export default function useAnimationOverlay() {
       position: { x: 0, y: 0 },
     },
   ]);
+
+  const [faceMetrics, setFaceMetrics] = useState<FaceMetrics>({
+    leftEAR: 0,
+    rightEAR: 0,
+    mouthMAR: 0,
+    htr: 0,
+    hpr: 0,
+  });
 
   const eyeLandmarksRef = useRef<{
     leftEyeLines: Array<{ position: Vec2; angle: number }>;
@@ -69,7 +109,60 @@ export default function useAnimationOverlay() {
     },
   });
 
-  // Function to spawn radial lines for an eye
+  // Track the bounding rectangle of the video element for in-bounds overlays
+  const [containerRect, setContainerRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  // ------------------------
+  // Sync containerRect with video element resize/move
+  // ------------------------
+  useEffect(() => {
+    if (!videoElement) return;
+
+    const updateRect = () => {
+      const rect = videoElement.getBoundingClientRect();
+      setContainerRect((prev) => {
+        if (
+          !prev ||
+          prev.left !== rect.left ||
+          prev.top !== rect.top ||
+          prev.width !== rect.width ||
+          prev.height !== rect.height
+        ) {
+          return {
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+          };
+        }
+        return prev;
+      });
+    };
+
+    // Initialise
+    updateRect();
+
+    // Observe size changes of element
+    const resizeObserver = new ResizeObserver(updateRect);
+    resizeObserver.observe(videoElement);
+
+    // Also update on window resize (position changes)
+    window.addEventListener("resize", updateRect);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateRect);
+    };
+  }, [videoElement]);
+
+  // ------------------------
+  // Animation helpers
+  // ------------------------
   const spawnEyeLines = useCallback((eyeSide: "left" | "right") => {
     const lines =
       eyeSide === "left"
@@ -92,7 +185,7 @@ export default function useAnimationOverlay() {
       // Remove line after animation completes
       setTimeout(() => {
         setAnimatedLines((prev) =>
-          prev.filter((line) => line.id !== lineId),
+          prev.filter((l) => l.id !== lineId),
         );
       }, BLINK_LINE_DURATION_MS);
     });
@@ -121,7 +214,7 @@ export default function useAnimationOverlay() {
         // Remove line after animation completes
         setTimeout(() => {
           setAnimatedLines((prev) =>
-            prev.filter((line) => line.id !== lineId),
+            prev.filter((l) => l.id !== lineId),
           );
         }, MOUTH_LINE_DURATION_MS);
       });
@@ -129,6 +222,9 @@ export default function useAnimationOverlay() {
     [],
   );
 
+  // ------------------------
+  // Landmark processing
+  // ------------------------
   const pushLandmarkInformation = useCallback(
     (
       landmarks: NormalizedLandmark[],
@@ -143,11 +239,9 @@ export default function useAnimationOverlay() {
         rightMouthCorner,
         leftMouthLines,
         rightMouthLines,
-      } = calculateAnimations({
-        landmarks,
-        videoElement,
-      });
+      } = calculateAnimations({ landmarks, videoElement });
 
+      // Update refs for eye & mouth lines (used when spawning)
       eyeLandmarksRef.current = {
         leftEyeLines,
         rightEyeLines,
@@ -158,25 +252,25 @@ export default function useAnimationOverlay() {
       // Update positions of existing animated lines to follow face
       setAnimatedLines((prev) =>
         prev.map((line) => {
-          const point =
-            line.side === "leftEye"
-              ? leftEyeLines[line.index]
-              : line.side === "rightEye"
-                ? rightEyeLines[line.index]
-                : line.side === "leftMouth"
-                  ? leftMouthLines[line.index]
-                  : rightMouthLines[line.index];
-          if (!point) return line;
-          return {
-            ...line,
-            ...point,
-          };
+          const point = (() => {
+            switch (line.side) {
+              case "leftEye":
+                return leftEyeLines[line.index];
+              case "rightEye":
+                return rightEyeLines[line.index];
+              case "leftMouth":
+                return leftMouthLines[line.index];
+              case "rightMouth":
+                return rightMouthLines[line.index];
+            }
+          })();
+          return point ? { ...line, ...point } : line;
         }),
       );
 
       // Update star positions using rolling averages for smoother movement
       setStars((prev) =>
-        prev.map((star: Star) => {
+        prev.map((star) => {
           const corner = (() => {
             switch (star.side) {
               case "leftEye":
@@ -205,6 +299,57 @@ export default function useAnimationOverlay() {
           };
         }),
       );
+
+      // -----------------
+      // Face metrics calc
+      // -----------------
+      // Cast landmarks to Point3D for metric calculations
+      const landmarks3D = landmarks as unknown as Point3D[];
+
+      const newLeftEAR = calculateEAR(
+        LEFT_EYE_LANDMARKS.map((idx) => landmarks3D[idx]!),
+      );
+      const newRightEAR = calculateEAR(
+        RIGHT_EYE_LANDMARKS.map((idx) => landmarks3D[idx]!),
+      );
+      const newMAR = calculateMAR(
+        MOUTH_LANDMARKS.map((idx) => landmarks3D[idx]!),
+      );
+      const newHTR = calculateHTR(
+        landmarks3D,
+        PHILTRUM_CENTER,
+        LEFT_FACE_SIDE,
+        RIGHT_FACE_SIDE,
+      );
+      const newHPR = calculateHPR(
+        landmarks3D,
+        NOSE_CENTER,
+        LEFT_FACE_SIDE,
+        RIGHT_FACE_SIDE,
+        FOREHEAD_TOP,
+        CHIN_CENTER,
+      );
+
+      setFaceMetrics((prev) => {
+        if (
+          prev.leftEAR === newLeftEAR &&
+          prev.rightEAR === newRightEAR &&
+          prev.mouthMAR === newMAR &&
+          prev.htr === newHTR &&
+          prev.hpr === newHPR
+        ) {
+          return prev;
+        }
+        return {
+          leftEAR: newLeftEAR,
+          rightEAR: newRightEAR,
+          mouthMAR: newMAR,
+          htr: newHTR,
+          hpr: newHPR,
+        };
+      });
+
+      // containerRect is now updated via ResizeObserver effect
     },
     [],
   );
@@ -212,6 +357,8 @@ export default function useAnimationOverlay() {
   return {
     animatedLines,
     stars,
+    faceMetrics,
+    containerRect,
     pushLandmarkInformation,
     spawnEyeLines,
     spawnMouthLines,

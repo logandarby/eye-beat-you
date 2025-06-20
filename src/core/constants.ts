@@ -101,3 +101,22 @@ export const RIGHT_FACE_SIDE = 366;
 // Head Pitch Ratio (HPR) detection settings
 export const HPR_THRESHOLD = 0.3; // Threshold for detecting head pitch (positive -> up, negative -> down)
 export const HPR_ROLLING_WINDOW_SIZE = 5; // Window size for HPR rolling average calculation
+
+// --------------------------
+// UI Tuning Constants
+// --------------------------
+// Base pixel size for overlay stars
+export const STAR_BASE_SIZE = 13;
+// How aggressively the mouth aspect ratio scales the star size (higher = larger growth)
+export const STAR_MAR_SCALE_SENSITIVITY = 3;
+export const STAR_MAR_MAX_SCALE = 2;
+// Fraction of the overlay width/height used for each edge glow
+export const GLOW_EDGE_RATIO = 0.3;
+// How far beyond the threshold the glow saturates (1 = at threshold*2 it hits full opacity)
+export const GLOW_OPACITY_EXTRA_RANGE = 0;
+
+// Amplitude for star pulsation (scale range is 1 ± amplitude)
+export const STAR_PULSATE_AMPLITUDE = 0.3;
+
+// Multiplier applied to edge glow opacity when thresholds are ignored
+export const INDEPENDENT_GLOW_OPACITY_MULTIPLIER = 2;

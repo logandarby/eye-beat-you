@@ -28,7 +28,7 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import AnimationOverlay from "./AnimationOverlay/AnimationOverlay";
 import FunnyStickers from "./FunnyStickers/FunnyStickers";
 import SideBar from "./SideBar/SideBar";
-import useAnimationOverlay from "@/hooks/useAnimationOverlay";
+import useAnimationOverlay from "./AnimationOverlay/useAnimationOverlay";
 import { useWebcam } from "@/hooks/useWebcam";
 import { calculateObjectCoverDisplayProperties } from "@/utils/object-cover";
 import { debounce } from "@/utils/debounce";
@@ -84,7 +84,9 @@ function GameComponent() {
     spawnMouthLines,
     animatedLines,
     stars,
-  } = useAnimationOverlay();
+    containerRect,
+    faceMetrics,
+  } = useAnimationOverlay(videoRef.current);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const playDebouncedAudio = useCallback(
@@ -176,6 +178,7 @@ function GameComponent() {
       }
 
       faceAnalyzerRef.current?.analyzeFace(results);
+
       setFaceDetected(true);
       // Clear any existing timeout
       if (faceDetectionTimeoutRef.current) {
@@ -363,6 +366,14 @@ function GameComponent() {
   return (
     <div className="bg-background min-h-screen texture-bg p-4 sm:p-6 md:p-8 lg:p-12 xl:p-20">
       <div className="relative overflow-visible">
+        <AnimationOverlay
+          enabled={faceDetected && cameraStatus === "success"}
+          animatedLines={animatedLines}
+          stars={stars}
+          containerRect={containerRect}
+          faceMetrics={faceMetrics}
+          ignoreThresholds={true}
+        />
         {cameraStatus === "success" && (
           <>
             <FunnyStickers />
@@ -422,12 +433,6 @@ function GameComponent() {
           />
         </div>
       </div>
-
-      <AnimationOverlay
-        enabled={faceDetected && cameraStatus === "success"}
-        animatedLines={animatedLines}
-        stars={stars}
-      />
 
       {/* Show fallback when camera is not ready */}
       {cameraStatus !== "success" && <CameraFallback />}
