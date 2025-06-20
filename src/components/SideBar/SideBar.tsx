@@ -45,7 +45,7 @@ export default function SideBar({
             </p>
             <p className="help-section">
               <strong>How do I use it?</strong> Blink and open your
-              mouth! Make funny faces! See what happens.
+              mouth! Make funny faces! Look around! See what happens.
             </p>
             <p className="help-section">
               <strong>Pro Tip:</strong> Make sure your face is

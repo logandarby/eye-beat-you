@@ -252,12 +252,7 @@ export function useFacialLandmarkDetection({
         canvasCtx.fillText(titleText, 20, 40);
       }
     },
-    [
-      debugMode,
-      drawDebugPoints,
-      drawCalculationDebug,
-      drawMouthRadialPoints,
-    ],
+    [debugMode, drawDebugPoints, drawCalculationDebug],
   );
 
   const detectAndDraw = useCallback(async () => {
